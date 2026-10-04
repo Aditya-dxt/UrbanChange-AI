@@ -1,0 +1,27 @@
+# Backend .gitignore
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+*.sqlite3
+*.db
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+*.tif
+*.tiff
+*.geotiff
+alembic/versions/*.pyc
