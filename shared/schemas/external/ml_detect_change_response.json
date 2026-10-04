@@ -1,0 +1,170 @@
+{
+  "$defs": {
+    "ChangeRegion": {
+      "description": "A single spatially-localised change region returned by ML.",
+      "properties": {
+        "geometry": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geometry"
+        },
+        "area_pixels": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Area Pixels"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        }
+      },
+      "title": "ChangeRegion",
+      "type": "object"
+    },
+    "ClassificationResult": {
+      "description": "Top-level change classification for the whole scene.",
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        }
+      },
+      "required": [
+        "label",
+        "confidence"
+      ],
+      "title": "ClassificationResult",
+      "type": "object"
+    }
+  },
+  "description": "Response from POST /ml/detect-change (from README \u00a7ML\u2192Backend contract).",
+  "properties": {
+    "change_detected": {
+      "title": "Change Detected",
+      "type": "boolean"
+    },
+    "confidence": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "changed_area_pixels": {
+      "minimum": 0,
+      "title": "Changed Area Pixels",
+      "type": "integer"
+    },
+    "mask_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Mask Path"
+    },
+    "change_regions": {
+      "items": {
+        "$ref": "#/$defs/ChangeRegion"
+      },
+      "title": "Change Regions",
+      "type": "array"
+    },
+    "classification": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ClassificationResult"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "model_version": {
+      "title": "Model Version",
+      "type": "string"
+    },
+    "preprocessing_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Preprocessing Version"
+    },
+    "threshold": {
+      "anyOf": [
+        {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Threshold"
+    }
+  },
+  "required": [
+    "change_detected",
+    "confidence",
+    "changed_area_pixels",
+    "model_version"
+  ],
+  "title": "MLDetectChangeResponse",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

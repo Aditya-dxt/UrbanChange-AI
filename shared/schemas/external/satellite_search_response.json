@@ -1,0 +1,112 @@
+{
+  "$defs": {
+    "SceneCandidate": {
+      "description": "A single candidate scene returned by the catalog search.",
+      "properties": {
+        "scene_id": {
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "acquisition_date": {
+          "format": "date",
+          "title": "Acquisition Date",
+          "type": "string"
+        },
+        "cloud_cover": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cloud Cover"
+        },
+        "sensor": {
+          "default": "Sentinel-2",
+          "title": "Sensor",
+          "type": "string"
+        },
+        "crs": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crs"
+        },
+        "resolution": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolution"
+        },
+        "bounds": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bounds"
+        }
+      },
+      "required": [
+        "scene_id",
+        "acquisition_date"
+      ],
+      "title": "SceneCandidate",
+      "type": "object"
+    }
+  },
+  "description": "Response from POST /satellite/search.",
+  "properties": {
+    "scenes": {
+      "items": {
+        "$ref": "#/$defs/SceneCandidate"
+      },
+      "title": "Scenes",
+      "type": "array"
+    },
+    "success": {
+      "default": true,
+      "title": "Success",
+      "type": "boolean"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    }
+  },
+  "title": "SatelliteSearchResponse",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

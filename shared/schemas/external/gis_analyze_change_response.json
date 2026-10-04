@@ -1,0 +1,173 @@
+{
+  "$defs": {
+    "NearbyFeature": {
+      "description": "A notable feature near (but not necessarily overlapping) the change.",
+      "properties": {
+        "feature_type": {
+          "title": "Feature Type",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "distance_m": {
+          "minimum": 0,
+          "title": "Distance M",
+          "type": "number"
+        },
+        "geometry": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geometry"
+        }
+      },
+      "required": [
+        "feature_type",
+        "distance_m"
+      ],
+      "title": "NearbyFeature",
+      "type": "object"
+    },
+    "SensitiveIntersection": {
+      "description": "One layer that the change region intersects.",
+      "properties": {
+        "layer_name": {
+          "title": "Layer Name",
+          "type": "string"
+        },
+        "layer_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Layer Id"
+        },
+        "overlap_pct": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Overlap Pct",
+          "type": "number"
+        },
+        "geometry": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geometry"
+        }
+      },
+      "required": [
+        "layer_name",
+        "overlap_pct"
+      ],
+      "title": "SensitiveIntersection",
+      "type": "object"
+    }
+  },
+  "description": "Response from POST /gis/analyze-change (README \u00a7GIS\u2192Backend contract).",
+  "properties": {
+    "changed_area_m2": {
+      "minimum": 0,
+      "title": "Changed Area M2",
+      "type": "number"
+    },
+    "sensitive_intersections": {
+      "items": {
+        "$ref": "#/$defs/SensitiveIntersection"
+      },
+      "title": "Sensitive Intersections",
+      "type": "array"
+    },
+    "overlap_percentages": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Overlap Percentages",
+      "type": "object"
+    },
+    "nearby_features": {
+      "items": {
+        "$ref": "#/$defs/NearbyFeature"
+      },
+      "title": "Nearby Features",
+      "type": "array"
+    },
+    "geojson": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Geojson"
+    },
+    "layer_versions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Layer Versions"
+    },
+    "distances": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Distances"
+    }
+  },
+  "required": [
+    "changed_area_m2"
+  ],
+  "title": "GISAnalyzeChangeResponse",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

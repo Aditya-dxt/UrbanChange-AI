@@ -1,0 +1,715 @@
+{
+  "$defs": {
+    "ClassificationOut": {
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "confidence": {
+          "title": "Confidence",
+          "type": "number"
+        }
+      },
+      "required": [
+        "label",
+        "confidence"
+      ],
+      "title": "ClassificationOut",
+      "type": "object"
+    },
+    "DetectionOut": {
+      "properties": {
+        "change_detected": {
+          "title": "Change Detected",
+          "type": "boolean"
+        },
+        "confidence": {
+          "title": "Confidence",
+          "type": "number"
+        },
+        "changed_area_pixels": {
+          "title": "Changed Area Pixels",
+          "type": "integer"
+        },
+        "change_mask_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Change Mask Url"
+        },
+        "change_regions": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Change Regions",
+          "type": "array"
+        },
+        "classification": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClassificationOut"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "model_version": {
+          "title": "Model Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "change_detected",
+        "confidence",
+        "changed_area_pixels",
+        "model_version"
+      ],
+      "title": "DetectionOut",
+      "type": "object"
+    },
+    "EvidenceOut": {
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "evidence_type": {
+          "title": "Evidence Type",
+          "type": "string"
+        },
+        "source_reference": {
+          "title": "Source Reference",
+          "type": "string"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "evidence_type",
+        "source_reference"
+      ],
+      "title": "EvidenceOut",
+      "type": "object"
+    },
+    "ExplanationOut": {
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "status": {
+          "default": "requires_human_verification",
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "ExplanationOut",
+      "type": "object"
+    },
+    "FingerprintOut": {
+      "properties": {
+        "fingerprint_id": {
+          "title": "Fingerprint Id",
+          "type": "string"
+        },
+        "change_type": {
+          "title": "Change Type",
+          "type": "string"
+        },
+        "changed_area_m2": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Changed Area M2"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "temporal_behavior": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Temporal Behavior"
+        },
+        "sensitive_overlap": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sensitive Overlap"
+        },
+        "first_observed": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Observed"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Version"
+        }
+      },
+      "required": [
+        "fingerprint_id",
+        "change_type"
+      ],
+      "title": "FingerprintOut",
+      "type": "object"
+    },
+    "GISOut": {
+      "properties": {
+        "changed_area_m2": {
+          "title": "Changed Area M2",
+          "type": "number"
+        },
+        "sensitive_intersections": {
+          "items": {
+            "$ref": "#/$defs/SensitiveIntersectionOut"
+          },
+          "title": "Sensitive Intersections",
+          "type": "array"
+        },
+        "overlap_percentages": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Overlap Percentages",
+          "type": "object"
+        },
+        "nearby_features": {
+          "items": {
+            "$ref": "#/$defs/NearbyFeatureOut"
+          },
+          "title": "Nearby Features",
+          "type": "array"
+        },
+        "distances": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Distances"
+        },
+        "geojson": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geojson"
+        }
+      },
+      "required": [
+        "changed_area_m2"
+      ],
+      "title": "GISOut",
+      "type": "object"
+    },
+    "NearbyFeatureOut": {
+      "properties": {
+        "feature_type": {
+          "title": "Feature Type",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "distance_m": {
+          "title": "Distance M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "feature_type",
+        "distance_m"
+      ],
+      "title": "NearbyFeatureOut",
+      "type": "object"
+    },
+    "ObservationOut": {
+      "description": "One satellite scene as presented to the frontend.",
+      "properties": {
+        "scene_id": {
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "sensor": {
+          "title": "Sensor",
+          "type": "string"
+        },
+        "acquisition_date": {
+          "format": "date",
+          "title": "Acquisition Date",
+          "type": "string"
+        },
+        "cloud_cover": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cloud Cover"
+        },
+        "crs": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crs"
+        },
+        "resolution": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolution"
+        },
+        "image_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image Url"
+        },
+        "preview_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preview Url"
+        },
+        "preview_available": {
+          "default": false,
+          "title": "Preview Available",
+          "type": "boolean"
+        },
+        "bounds": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bounds"
+        },
+        "role": {
+          "default": "before",
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scene_id",
+        "sensor",
+        "acquisition_date"
+      ],
+      "title": "ObservationOut",
+      "type": "object"
+    },
+    "SensitiveIntersectionOut": {
+      "properties": {
+        "layer_name": {
+          "title": "Layer Name",
+          "type": "string"
+        },
+        "overlap_pct": {
+          "title": "Overlap Pct",
+          "type": "number"
+        },
+        "geometry": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geometry"
+        }
+      },
+      "required": [
+        "layer_name",
+        "overlap_pct"
+      ],
+      "title": "SensitiveIntersectionOut",
+      "type": "object"
+    },
+    "TemporalEventOut": {
+      "properties": {
+        "observation_date": {
+          "format": "date",
+          "title": "Observation Date",
+          "type": "string"
+        },
+        "event_type": {
+          "title": "Event Type",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "area_delta_m2": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Area Delta M2"
+        }
+      },
+      "required": [
+        "observation_date",
+        "event_type"
+      ],
+      "title": "TemporalEventOut",
+      "type": "object"
+    },
+    "TemporalReconstructionOut": {
+      "properties": {
+        "events": {
+          "items": {
+            "$ref": "#/$defs/TemporalEventOut"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "first_persistent_interval": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Persistent Interval"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        }
+      },
+      "title": "TemporalReconstructionOut",
+      "type": "object"
+    }
+  },
+  "description": "Full investigation response \u2014 GET /api/investigations/{id}.\nFields may be null if their stage has not completed or failed.",
+  "properties": {
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "status": {
+      "title": "Status",
+      "type": "string"
+    },
+    "stage": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Stage"
+    },
+    "failed_stage": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failed Stage"
+    },
+    "bbox": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Bbox",
+      "type": "array"
+    },
+    "historical_date": {
+      "format": "date",
+      "title": "Historical Date",
+      "type": "string"
+    },
+    "current_date": {
+      "anyOf": [
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Current Date"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    },
+    "observations": {
+      "items": {
+        "$ref": "#/$defs/ObservationOut"
+      },
+      "title": "Observations",
+      "type": "array"
+    },
+    "detection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DetectionOut"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "gis": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/GISOut"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "fingerprint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FingerprintOut"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "temporal_reconstruction": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TemporalReconstructionOut"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/EvidenceOut"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "explanation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExplanationOut"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "satellite_failure_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Satellite Failure Reason"
+    }
+  },
+  "required": [
+    "id",
+    "status",
+    "bbox",
+    "historical_date",
+    "created_at",
+    "updated_at"
+  ],
+  "title": "InvestigationResponse",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

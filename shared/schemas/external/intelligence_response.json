@@ -1,0 +1,338 @@
+{
+  "$defs": {
+    "EvidenceItem": {
+      "description": "One item in the evidence graph.",
+      "properties": {
+        "evidence_type": {
+          "title": "Evidence Type",
+          "type": "string"
+        },
+        "source_reference": {
+          "title": "Source Reference",
+          "type": "string"
+        },
+        "metadata": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Metadata"
+        }
+      },
+      "required": [
+        "evidence_type",
+        "source_reference"
+      ],
+      "title": "EvidenceItem",
+      "type": "object"
+    },
+    "ExplanationOut": {
+      "description": "Explanation text with evidence references.",
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "status": {
+          "default": "requires_human_verification",
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "ExplanationOut",
+      "type": "object"
+    },
+    "FingerprintOut": {
+      "description": "Change Fingerprint (README \u00a76 \u2013 Change Fingerprint).",
+      "properties": {
+        "fingerprint_id": {
+          "title": "Fingerprint Id",
+          "type": "string"
+        },
+        "change_type": {
+          "title": "Change Type",
+          "type": "string"
+        },
+        "changed_area_m2": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Changed Area M2"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "temporal_behavior": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Temporal Behavior"
+        },
+        "sensitive_overlap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FingerprintSensitiveOverlap"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "first_observed": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Observed"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Version"
+        }
+      },
+      "required": [
+        "fingerprint_id",
+        "change_type"
+      ],
+      "title": "FingerprintOut",
+      "type": "object"
+    },
+    "FingerprintSensitiveOverlap": {
+      "description": "Sensitive-zone overlap summary inside the fingerprint.",
+      "properties": {
+        "percentage": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Percentage"
+        },
+        "layers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Layers",
+          "type": "array"
+        }
+      },
+      "title": "FingerprintSensitiveOverlap",
+      "type": "object"
+    },
+    "TemporalEvent": {
+      "description": "One step in the temporal reconstruction timeline.",
+      "properties": {
+        "observation_date": {
+          "format": "date",
+          "title": "Observation Date",
+          "type": "string"
+        },
+        "event_type": {
+          "title": "Event Type",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "area_delta_m2": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Area Delta M2"
+        }
+      },
+      "required": [
+        "observation_date",
+        "event_type"
+      ],
+      "title": "TemporalEvent",
+      "type": "object"
+    },
+    "TemporalReconstructionOut": {
+      "description": "Temporal reconstruction (README \u00a77).",
+      "properties": {
+        "events": {
+          "items": {
+            "$ref": "#/$defs/TemporalEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "first_persistent_interval": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Persistent Interval"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        }
+      },
+      "title": "TemporalReconstructionOut",
+      "type": "object"
+    }
+  },
+  "description": "Full response from the Intelligence module (README \u00a7Intelligence\u2192Backend).",
+  "properties": {
+    "fingerprint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FingerprintOut"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "temporal_reconstruction": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TemporalReconstructionOut"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/EvidenceItem"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "explanation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExplanationOut"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "evidence_graph": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Evidence Graph"
+    }
+  },
+  "title": "IntelligenceResponse",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

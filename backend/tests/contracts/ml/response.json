@@ -1,0 +1,25 @@
+{
+  "_comment": "Example response from POST /ml/detect-change — Person 1 must match this shape",
+  "change_detected": true,
+  "confidence": 0.94,
+  "changed_area_pixels": 38420,
+  "change_mask_path": "outputs/masks/investigation_001.tif",
+  "change_regions": [
+    {
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.15, 28.55], [77.18, 28.55], [77.18, 28.58], [77.15, 28.58], [77.15, 28.55]]]
+      },
+      "area_pixels": 38420,
+      "confidence": 0.94,
+      "label": "construction"
+    }
+  ],
+  "classification": {
+    "label": "construction",
+    "confidence": 0.91
+  },
+  "model_version": "siamese-unet-attention-v1",
+  "preprocessing_version": "v1.0",
+  "threshold": 0.5
+}
