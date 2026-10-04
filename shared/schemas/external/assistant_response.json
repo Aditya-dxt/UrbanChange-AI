@@ -1,0 +1,39 @@
+{
+  "description": "Response from the Investigation Assistant.",
+  "properties": {
+    "answer": {
+      "title": "Answer",
+      "type": "string"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "uncertainty_notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Uncertainty Notes"
+    },
+    "status": {
+      "default": "requires_human_verification",
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "answer"
+  ],
+  "title": "AssistantResponse",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

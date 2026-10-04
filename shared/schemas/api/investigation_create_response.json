@@ -1,0 +1,21 @@
+{
+  "description": "Response to POST /api/investigations.",
+  "properties": {
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "status": {
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "status"
+  ],
+  "title": "InvestigationCreateResponse",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

@@ -1,0 +1,197 @@
+{
+  "$defs": {
+    "ObservationOut": {
+      "description": "One satellite scene as presented to the frontend.",
+      "properties": {
+        "scene_id": {
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "sensor": {
+          "title": "Sensor",
+          "type": "string"
+        },
+        "acquisition_date": {
+          "format": "date",
+          "title": "Acquisition Date",
+          "type": "string"
+        },
+        "cloud_cover": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cloud Cover"
+        },
+        "crs": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crs"
+        },
+        "resolution": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolution"
+        },
+        "image_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image Url"
+        },
+        "preview_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preview Url"
+        },
+        "preview_available": {
+          "default": false,
+          "title": "Preview Available",
+          "type": "boolean"
+        },
+        "bounds": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bounds"
+        },
+        "role": {
+          "default": "before",
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scene_id",
+        "sensor",
+        "acquisition_date"
+      ],
+      "title": "ObservationOut",
+      "type": "object"
+    },
+    "TemporalEventOut": {
+      "properties": {
+        "observation_date": {
+          "format": "date",
+          "title": "Observation Date",
+          "type": "string"
+        },
+        "event_type": {
+          "title": "Event Type",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "area_delta_m2": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Area Delta M2"
+        }
+      },
+      "required": [
+        "observation_date",
+        "event_type"
+      ],
+      "title": "TemporalEventOut",
+      "type": "object"
+    }
+  },
+  "description": "GET /api/investigations/{id}/timeline",
+  "properties": {
+    "investigation_id": {
+      "format": "uuid",
+      "title": "Investigation Id",
+      "type": "string"
+    },
+    "events": {
+      "items": {
+        "$ref": "#/$defs/TemporalEventOut"
+      },
+      "title": "Events",
+      "type": "array"
+    },
+    "observations": {
+      "items": {
+        "$ref": "#/$defs/ObservationOut"
+      },
+      "title": "Observations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "investigation_id"
+  ],
+  "title": "TimelineOut",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

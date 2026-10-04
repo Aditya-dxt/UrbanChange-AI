@@ -1,0 +1,21 @@
+{
+  "_comment": "Example request body sent BY the backend TO Intelligence module",
+  "investigation_id": "550e8400-e29b-41d4-a716-446655440000",
+  "bbox": [77.1, 28.5, 77.3, 28.7],
+  "historical_date": "2025-04-14",
+  "current_date": "2026-01-18",
+  "observations": [
+    {"scene_id": "S2A_before", "role": "before", "acquisition_date": "2025-04-14"},
+    {"scene_id": "S2B_after",  "role": "after",  "acquisition_date": "2026-01-18"}
+  ],
+  "detection": {
+    "change_detected": true,
+    "confidence": 0.94,
+    "changed_area_pixels": 38420,
+    "model_version": "siamese-unet-attention-v1"
+  },
+  "gis": {
+    "changed_area_m2": 3842.0,
+    "sensitive_intersections": [{"layer_name": "protected_forest", "overlap_pct": 64.0}]
+  }
+}

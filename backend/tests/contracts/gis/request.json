@@ -1,0 +1,16 @@
+{
+  "_comment": "Example request body sent BY the backend TO POST /gis/analyze-change",
+  "change_regions": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.15, 28.55], [77.18, 28.55], [77.18, 28.58], [77.15, 28.58], [77.15, 28.55]]]
+      },
+      "properties": {"confidence": 0.94, "label": "construction"}
+    }
+  ],
+  "bbox": [77.1, 28.5, 77.3, 28.7],
+  "context_layer_ids": ["protected_forest", "water_bodies"],
+  "investigation_id": "550e8400-e29b-41d4-a716-446655440000"
+}

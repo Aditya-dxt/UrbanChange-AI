@@ -1,0 +1,28 @@
+{
+  "_comment": "Example response from POST /satellite/fetch — Person 2 must match this shape",
+  "success": true,
+  "reason": null,
+  "before": {
+    "scene_id": "S2A_MSIL2A_20250414T052651_N0511_R105_T43RGK_20250414T073812",
+    "acquisition_date": "2025-04-14",
+    "sensor": "Sentinel-2",
+    "image_path": "sentinel2/2025/before.tif",
+    "preview_path": "sentinel2/2025/before_preview.png",
+    "cloud_cover": 8.3,
+    "crs": "EPSG:32643",
+    "resolution": 10.0,
+    "bounds": [77.09, 28.49, 77.31, 28.71]
+  },
+  "after": {
+    "scene_id": "S2B_MSIL2A_20260118T052651_N0511_R105_T43RGK_20260118T074212",
+    "acquisition_date": "2026-01-18",
+    "sensor": "Sentinel-2",
+    "image_path": "sentinel2/2026/after.tif",
+    "preview_path": "sentinel2/2026/after_preview.png",
+    "cloud_cover": 4.1,
+    "crs": "EPSG:32643",
+    "resolution": 10.0,
+    "bounds": [77.09, 28.49, 77.31, 28.71]
+  },
+  "intermediate": []
+}

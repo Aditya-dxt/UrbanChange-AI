@@ -1,0 +1,158 @@
+{
+  "$defs": {
+    "FetchedScene": {
+      "description": "A fully retrieved scene with file paths.",
+      "properties": {
+        "scene_id": {
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "acquisition_date": {
+          "format": "date",
+          "title": "Acquisition Date",
+          "type": "string"
+        },
+        "sensor": {
+          "title": "Sensor",
+          "type": "string"
+        },
+        "file_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "File Path"
+        },
+        "preview_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preview Path"
+        },
+        "cloud_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cloud Score"
+        },
+        "crs": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crs"
+        },
+        "resolution": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolution"
+        },
+        "bounds": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bounds"
+        }
+      },
+      "required": [
+        "scene_id",
+        "acquisition_date",
+        "sensor"
+      ],
+      "title": "FetchedScene",
+      "type": "object"
+    }
+  },
+  "description": "Response from POST /satellite/fetch \u2014 a before/after pair + extras.",
+  "properties": {
+    "before": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FetchedScene"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "after": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FetchedScene"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "intermediate": {
+      "items": {
+        "$ref": "#/$defs/FetchedScene"
+      },
+      "title": "Intermediate",
+      "type": "array"
+    },
+    "success": {
+      "default": true,
+      "title": "Success",
+      "type": "boolean"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    }
+  },
+  "title": "SatelliteFetchResponse",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

@@ -1,0 +1,61 @@
+{
+  "_comment": "Example response from Intelligence module — Person 6 must match this shape",
+  "fingerprint": {
+    "fingerprint_id": "UC-2026-A91F",
+    "change_type": "construction",
+    "changed_area_m2": 3842.0,
+    "confidence": 0.94,
+    "temporal_behavior": "progressive",
+    "sensitive_overlap": {
+      "percentage": 64.0,
+      "layers": ["protected_forest"]
+    },
+    "first_observed": "2025-04-14",
+    "model_version": "siamese-unet-attention-v1"
+  },
+  "temporal_reconstruction": {
+    "events": [
+      {
+        "observation_date": "2025-04-14",
+        "event_type": "ground_disturbance",
+        "description": "Initial ground disturbance detected",
+        "confidence": 0.81,
+        "area_delta_m2": 1200.0
+      },
+      {
+        "observation_date": "2026-01-18",
+        "event_type": "structure_complete",
+        "description": "Large structure established",
+        "confidence": 0.94,
+        "area_delta_m2": 2642.0
+      }
+    ],
+    "first_persistent_interval": "2025-04-14/2026-01-18",
+    "summary": "Progressive construction observed from April 2025 to January 2026"
+  },
+  "evidence": [
+    {
+      "evidence_type": "satellite_observation",
+      "source_reference": "scene_id:S2A_before",
+      "metadata": {"acquisition_date": "2025-04-14", "cloud_cover": 8.3}
+    },
+    {
+      "evidence_type": "detection",
+      "source_reference": "model:siamese-unet-attention-v1",
+      "metadata": {"confidence": 0.94, "changed_area_pixels": 38420}
+    }
+  ],
+  "evidence_graph": {
+    "nodes": ["observation_before", "observation_after", "detection", "gis_analysis"],
+    "edges": [
+      {"from": "observation_before", "to": "detection"},
+      {"from": "observation_after",  "to": "detection"},
+      {"from": "detection",          "to": "gis_analysis"}
+    ]
+  },
+  "explanation": {
+    "text": "Significant construction activity was detected between April 2025 and January 2026. The changed area (3,842 m²) overlaps 64% with a protected forest context layer. Model confidence is 94%. Human verification is required before drawing legal conclusions.",
+    "evidence_ids": ["ev_001", "ev_002"],
+    "status": "requires_human_verification"
+  }
+}
