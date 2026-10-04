@@ -27,8 +27,23 @@ SettingsDep = Annotated[Settings, Depends(settings_dep)]
 # ── Database session dependency ────────────────────────────────────────────────
 
 async def db_session_dep() -> AsyncGenerator[AsyncSession, None]:
-    async for session in get_async_session():
-        yield session
+    from fastapi import HTTPException as _HTTPException
+    from fastapi.exceptions import RequestValidationError as _RVE
+    try:
+        async for session in get_async_session():
+            yield session
+    except (_HTTPException, _RVE):
+        raise  # re-raise FastAPI HTTP / validation errors as-is
+    except Exception as exc:
+        # Convert DB-level errors (ConnectionRefusedError, OperationalError…) → 503
+        raise _HTTPException(
+            status_code=503,
+            detail={
+                "code": "DB_UNAVAILABLE",
+                "message": "Database is unavailable.",
+                "reason": type(exc).__name__,
+            },
+        ) from exc
 
 
 DBSession = Annotated[AsyncSession, Depends(db_session_dep)]

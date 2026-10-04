@@ -98,9 +98,29 @@ def create_app() -> FastAPI:
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)  # type: ignore[arg-type]
     app.add_exception_handler(RequestValidationError, validation_error_handler)  # type: ignore[arg-type]
 
+    # Catch-all: any unhandled exception (e.g. DB connection refused) → 500 JSON
+    from fastapi import Request as _Request
+    from fastapi.responses import JSONResponse as _JSONResponse
+
+    async def _generic_error_handler(request: _Request, exc: Exception) -> _JSONResponse:
+        request_id = getattr(request.state, "request_id", "-")
+        log.error("unhandled_exception request_id=%s error=%s", request_id, exc, exc_info=True)
+        return _JSONResponse(
+            status_code=500,
+            content={
+                "code": "INTERNAL_ERROR",
+                "message": "An unexpected error occurred.",
+                "reason": type(exc).__name__,
+                "request_id": request_id,
+            },
+        )
+
+    app.add_exception_handler(Exception, _generic_error_handler)  # type: ignore[arg-type]
+
     # ── Routers ───────────────────────────────────────────────────────────────
     from app.api.routers.health import router as health_router
-    from app.api.routers.stubs import assets_router, investigations_router
+    from app.api.routers.investigations import router as investigations_router
+    from app.api.routers.assets import router as assets_router
 
     app.include_router(health_router)
     app.include_router(investigations_router)

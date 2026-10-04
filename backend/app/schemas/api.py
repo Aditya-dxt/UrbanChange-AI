@@ -13,7 +13,7 @@ from datetime import date, datetime
 from typing import Any, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -152,12 +152,20 @@ class InvestigationCreateRequest(BaseModel):
     historical_date: date
     current_date: Optional[date] = None
 
+    @field_validator("bbox")
     @classmethod
-    def __get_validators__(cls):
-        yield cls._validate
-
-    @classmethod
-    def _validate(cls, v):
+    def _validate_bbox(cls, v: list[float]) -> list[float]:
+        if len(v) != 4:
+            raise ValueError("bbox must have exactly 4 elements: [west, south, east, north]")
+        west, south, east, north = v
+        if not (-180 <= west <= 180 and -180 <= east <= 180):
+            raise ValueError("bbox longitude values must be in [-180, 180]")
+        if not (-90 <= south <= 90 and -90 <= north <= 90):
+            raise ValueError("bbox latitude values must be in [-90, 90]")
+        if south >= north:
+            raise ValueError("bbox south must be less than north")
+        if west > east:
+            raise ValueError("bbox west must be less than or equal to east")
         return v
 
 

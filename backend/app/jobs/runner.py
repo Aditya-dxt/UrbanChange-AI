@@ -51,14 +51,9 @@ class InProcessJobRunner(JobRunner):
         **kwargs: Any,
     ) -> None:
         """
-        Wraps the async coroutine in a sync wrapper that asyncio.run()s it,
-        because BackgroundTasks expects sync callables.
+        FastAPI BackgroundTasks handles both sync and async callables natively.
+        The framework awaits the coroutine in the running event loop after the
+        HTTP response is sent — no asyncio.run() wrapper needed.
         """
-        def _sync_wrapper() -> None:
-            try:
-                asyncio.run(func(*args, **kwargs))
-            except Exception as exc:  # noqa: BLE001
-                log.error("InProcessJobRunner: job failed func=%s error=%s", func.__name__, exc, exc_info=True)
-
         log.debug("InProcessJobRunner: enqueuing %s", func.__name__)
-        self._bg.add_task(_sync_wrapper)
+        self._bg.add_task(func, *args, **kwargs)
