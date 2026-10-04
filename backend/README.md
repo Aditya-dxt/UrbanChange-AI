@@ -3,6 +3,9 @@
 > **Person 4 owns this folder.**
 > Everyone else reads it; no-one edits it without raising it with Person 4 first.
 
+> **Build status:** Phases 1–7 complete. All endpoints live. All four adapters implemented (mock + HTTP + python-module). Integration checker script ready.
+> _Last updated: Phase 7 — HTTP Adapters + Integration Checker_
+
 ---
 
 ## Table of Contents
@@ -21,9 +24,10 @@
 8. [Pipeline stages and status machine](#8-pipeline-stages-and-status-machine)
 9. [Database](#9-database)
 10. [Running tests](#10-running-tests)
-11. [Docker](#11-docker)
-12. [Integration-day checklist](#12-integration-day-checklist)
-13. [FAQ / Troubleshooting](#13-faq--troubleshooting)
+11. [Integration Checker — check_modules.py](#11-integration-checker--check_modulespy)
+12. [Docker](#12-docker)
+13. [Integration-day checklist](#13-integration-day-checklist)
+14. [FAQ / Troubleshooting](#14-faq--troubleshooting)
 
 ---
 
@@ -577,7 +581,54 @@ pytest tests/integration/      # requires DB
 
 ---
 
-## 11. Docker
+## 11. Integration Checker — check_modules.py
+
+Before integration day, run this script to verify every non-mock module is reachable, returns a valid response, and maps cleanly to the internal schema:
+
+```bash
+# From the backend/ directory
+python scripts/check_modules.py
+```
+
+**What it does:**
+1. For each module set to `http` (or `python` for Intelligence), calls it with the example contract JSON from `tests/contracts/<module>/`
+2. Validates and maps the response through the mapper
+3. Prints a colour-coded `PASS / FAIL / MOCK` table per module with the exact missing/mismatched fields
+
+**Example output (all http, all passing):**
+```
+UrbanChange AI - Module Integration Checker
+CONTRACT_VERSION: 0.1.0
+
+MODULE                    MODE        RESULT    DETAIL
+------------------------------------------------------------------------------------------
+satellite                 http        PASS      success=True before=S2A_MSIL2A_20250414T
+ml                        http        PASS      change_detected=True confidence=0.94
+gis                       http        PASS      changed_area_m2=3842.0 intersections=1
+intelligence              http        PASS      fingerprint_id=UC-... evidence=3
+intelligence/assistant    http        PASS      answer_len=312 status=requires_human_verification
+
+All checked modules PASS. Ready for integration.
+```
+
+**Example output (one module failing):**
+```
+satellite                 http        FAIL      MapperError: satellite[fetch.before]: required field 'acquisition_date' is absent
+```
+
+**To switch a module from mock to http:**
+```bash
+# In .env
+SATELLITE_ADAPTER=http
+SATELLITE_BASE_URL=http://<satellite-service-host>:8001
+```
+Then re-run `python scripts/check_modules.py`. Fix any FAIL before integration day.
+
+**Exit codes:** `0` = all pass, `1` = at least one failure, `2` = config/import error.
+
+---
+
+## 12. Docker
 
 The backend + PostgreSQL/PostGIS are defined in the root `docker-compose.yml`.
 
