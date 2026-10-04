@@ -97,10 +97,13 @@ class AssetNotFoundError(UrbanChangeError):
 
 
 class PathTraversalError(UrbanChangeError):
-    def __init__(self) -> None:
+    def __init__(self, path: str = "") -> None:
         super().__init__(
             code="PATH_TRAVERSAL",
-            message="Requested path is outside the storage root.",
+            message=(
+                f"Requested path '{path}' is outside the storage root."
+                if path else "Requested path is outside the storage root."
+            ),
             status_code=400,
         )
 
