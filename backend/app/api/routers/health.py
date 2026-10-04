@@ -39,7 +39,7 @@ async def health(settings: SettingsDep) -> dict:
 # ── GET /health/ready ─────────────────────────────────────────────────────────
 
 @router.get("/health/ready", summary="Readiness probe")
-async def health_ready(settings: SettingsDep, db: DBSession) -> JSONResponse:
+async def health_ready(settings: SettingsDep) -> JSONResponse:
     """
     Returns the adapter mode and reachability of every module.
 
@@ -50,7 +50,7 @@ async def health_ready(settings: SettingsDep, db: DBSession) -> JSONResponse:
     The endpoint never raises; it always returns a well-formed body.
     HTTP 503 is returned only when the database itself is not reachable.
     """
-    db_ok = await _check_db(db)
+    db_ok = await _check_db(settings.database_url)
 
     modules: dict[str, dict] = {
         "satellite": await _check_module(
@@ -76,6 +76,7 @@ async def health_ready(settings: SettingsDep, db: DBSession) -> JSONResponse:
 
     body = {
         "ready": ready,
+        "db": "ok" if db_ok else "unavailable",
         "database": {"reachable": db_ok},
         "modules": modules,
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -87,9 +88,14 @@ async def health_ready(settings: SettingsDep, db: DBSession) -> JSONResponse:
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
-async def _check_db(db: DBSession) -> bool:
+async def _check_db(database_url: str) -> bool:
+    """Attempt a SELECT 1 with a fresh short-lived connection. Never raises."""
     try:
-        await db.execute(text("SELECT 1"))
+        from sqlalchemy.ext.asyncio import create_async_engine
+        engine = create_async_engine(database_url, pool_pre_ping=False, echo=False)
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        await engine.dispose()
         return True
     except Exception as exc:  # noqa: BLE001
         log.warning("health.db_unreachable error=%s", exc)

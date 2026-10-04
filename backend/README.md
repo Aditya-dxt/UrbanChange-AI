@@ -3,8 +3,11 @@
 > **Person 4 owns this folder.**
 > Everyone else reads it; no-one edits it without raising it with Person 4 first.
 
-> **Build status:** Phases 1–7 complete. All endpoints live. All four adapters implemented (mock + HTTP + python-module). Integration checker script ready.
-> _Last updated: Phase 7 — HTTP Adapters + Integration Checker_
+> **Build status:** Phases 1–8 complete. All endpoints live. All four adapters implemented (mock + HTTP + python-module). Full test suite passing (128 tests: unit, contract, integration). Integration checker script ready.
+> _Last updated: Phase 8 — Comprehensive Test Suite & Mock Data Status_
+
+> [!NOTE]
+> **Mock Data Notice:** **YES, mock data is currently used by default.** All four domain adapters (`SATELLITE_ADAPTER`, `ML_ADAPTER`, `GIS_ADAPTER`, `INTELLIGENCE_ADAPTER`) default to `"mock"` mode and serve high-fidelity synthetic fixture data. No external GPU, Copernicus satellite account, or live GIS server is required to develop, run, test, or integrate with the frontend. See [How to plug in your real module](#5-how-to-plug-in-your-real-module-integration-day) to switch any adapter from mock to live HTTP/Python.
 
 ---
 
@@ -569,15 +572,14 @@ pytest tests/integration/      # requires DB
 
 ### What's tested
 
-| Test file | What it verifies |
-|---|---|
-| `tests/unit/test_*_mapper.py` | Happy path, missing required field raises `MapperError`, unknown fields ignored, alias resolution |
-| `tests/contract/test_external_schemas.py` | Every fixture JSON validates against the external Pydantic schema |
-| `tests/contract/test_api_schema.py` | Mock pipeline result validates against `InvestigationResponse` |
-| `tests/integration/test_orchestrator.py` | Full success + each stage failure → partial |
-| `tests/integration/test_asset_service.py` | Normal serve, path traversal blocked |
-| `tests/integration/test_endpoints.py` | All HTTP endpoints return correct shapes |
-| `tests/integration/test_full_pipeline.py` | End-to-end: create → run → poll → assert all fields |
+| Test file | Tests | What it verifies |
+|---|---|---|
+| `tests/unit/test_mappers.py` | 33 | Happy path, alias resolution (`cloud_score`, `mask_path`, `file_path`), missing required fields raise `MapperError`, malformed sub-items skipped, extra fields ignored |
+| `tests/unit/test_asset_service.py` | 17 | Path resolution, path traversal attack protection (`../`, absolute paths outside storage root), content-type whitelist enforcement, missing assets 404 |
+| `tests/contract/test_contracts.py` | 13 | Every fixture in `tests/contracts/<module>/` validates against mappers; mock adapter outputs match contracts; request models validate bbox ranges |
+| `tests/integration/test_endpoints.py` | 65 (matrix) | HTTP endpoints via httpx ASGI transport: `/health` liveness/readiness, bbox 422 validation, asset security (traversal/404), `/run` rate limiting (429), and OpenAPI schema definitions |
+
+**Status:** 128 tests passing across unit, contract, and integration suites.
 
 ---
 
