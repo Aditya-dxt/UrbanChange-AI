@@ -22,7 +22,7 @@
 
 Instead of manually browsing satellite imagery catalogs, downloading gigabytes of rasters, and guessing why pixels changed, **UrbanChange AI** unifies the entire analytical journey into a single automated, explainable investigation:
 
-$$\text{Satellite Imagery} \xrightarrow{\text{AI Detection}} \text{Pixel-Level Change} \xrightarrow{\text{GIS Context}} \text{Spatial Overlap} \xrightarrow{\text{Intelligence}} \text{Evidence Graph \& Explanation}$$
+$$\text{Satellite Imagery} \xrightarrow{\text{AI Detection}} \text{Pixel-Level Change} \xrightarrow{\text{GIS Context}} \text{Spatial Overlap} \xrightarrow{\text{Intelligence}} \text{Evidence Graph \ Explanation}$$
 
 ---
 
