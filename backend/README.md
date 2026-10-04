@@ -3,8 +3,8 @@
 > **Person 4 owns this folder.**
 > Everyone else reads it; no-one edits it without raising it with Person 4 first.
 
-> **Build status:** Phases 1–8 complete. All endpoints live. All four adapters implemented (mock + HTTP + python-module). Full test suite passing (128 tests: unit, contract, integration). Integration checker script ready.
-> _Last updated: Phase 8 — Comprehensive Test Suite & Mock Data Status_
+> **Build status:** All 9 Phases complete. Full backend orchestration, DB models + migrations, mock + HTTP + python adapters, REST API routers, 128 automated tests passing, Docker Compose deployment ready.
+> _Last updated: Phase 9 — Production Docker Deployment & Root Configuration_
 
 > [!NOTE]
 > **Mock Data Notice:** **YES, mock data is currently used by default.** All four domain adapters (`SATELLITE_ADAPTER`, `ML_ADAPTER`, `GIS_ADAPTER`, `INTELLIGENCE_ADAPTER`) default to `"mock"` mode and serve high-fidelity synthetic fixture data. No external GPU, Copernicus satellite account, or live GIS server is required to develop, run, test, or integrate with the frontend. See [How to plug in your real module](#5-how-to-plug-in-your-real-module-integration-day) to switch any adapter from mock to live HTTP/Python.
@@ -632,25 +632,32 @@ Then re-run `python scripts/check_modules.py`. Fix any FAIL before integration d
 
 ## 12. Docker
 
-The backend + PostgreSQL/PostGIS are defined in the root `docker-compose.yml`.
+The entire platform (FastAPI Backend + PostgreSQL with PostGIS) can be launched with a single command via the root `docker-compose.yml`:
 
 ```bash
-# Start backend + database
-docker compose up backend db
+# 1. From the repo root, copy .env.example
+cp .env.example .env
 
-# First-time setup (run migrations inside the container)
-docker compose exec backend alembic upgrade head
+# 2. Build and start services in the background
+docker compose up -d --build
 
-# View logs
+# 3. View backend logs (entrypoint automatically runs alembic migrations on boot)
 docker compose logs -f backend
 
-# Stop everything
+# 4. Check platform readiness
+curl http://localhost:8000/health/ready
+
+# 5. Stop services and preserve data
 docker compose down
 ```
 
+**Services launched:**
+- `urbanchange-postgres` (`postgis/postgis:16-3.4`): PostgreSQL 16 + PostGIS on port 5432 with continuous healthchecks.
+- `urbanchange-backend`: Python 3.10 slim container on port 8000. Automatically runs `alembic upgrade head` before serving traffic.
+
 ---
 
-## 12. Integration-day checklist
+## 13. Integration-day checklist
 
 Use this before switching any adapter from `mock` to `http`.
 
@@ -687,13 +694,13 @@ Use this before switching any adapter from `mock` to `http`.
 
 ### Final integration checks
 - [ ] `GET /health/ready` shows all four modules `reachable: true`
-- [ ] Run the full test suite: `pytest` — all green
+- [ ] Run the full test suite: `pytest` — all green (128 passing tests)
 - [ ] POST a real investigation and poll until `status = completed`
-- [ ] Confirm all `_url` fields in the response resolve to accessible files
+- [ ] Confirm all `_url` fields in the response resolve to accessible files via `/api/assets/<path>`
 
 ---
 
-## 13. FAQ / Troubleshooting
+## 14. FAQ / Troubleshooting
 
 **Q: I changed a field name in my module. What breaks?**
 A: Only the mapper file for your module needs updating (`adapters/mappers/<your_module>_mapper.py`).
@@ -735,5 +742,5 @@ The first migration does this automatically, but your Postgres user needs `SUPER
 
 ---
 
-*Last updated: Phase 3 complete — DB models, Alembic migration, DATABASE_SCHEMA.md.*
+*Last updated: All 9 Phases complete — Full backend orchestration, schemas, database, adapters, routers, tests, and Docker deployment ready.*
 *Update this file whenever the contract version bumps or a new adapter is added.*
