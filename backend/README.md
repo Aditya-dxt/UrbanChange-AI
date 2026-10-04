@@ -682,5 +682,5 @@ The first migration does this automatically, but your Postgres user needs `SUPER
 
 ---
 
-*Last updated: Phase 2 complete — schemas and contracts exported.*
+*Last updated: Phase 3 complete — DB models, Alembic migration, DATABASE_SCHEMA.md.*
 *Update this file whenever the contract version bumps or a new adapter is added.*
