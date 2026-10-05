@@ -50,7 +50,7 @@ def main() -> None:
         SatelliteSearchResponse,
         SatelliteFetchResponse,
     )
-    from app.schemas.external.ml import MLDetectChangeResponse
+    from app.schemas.external.ml import MLDetectChangeResponse, MLDetectRequest
     from app.schemas.external.gis import GISAnalyzeChangeResponse
     from app.schemas.external.intelligence import (
         IntelligenceResponse,
@@ -60,6 +60,7 @@ def main() -> None:
     ext = SHARED_DIR / "external"
     export(SatelliteSearchResponse,    ext / "satellite_search_response.json")
     export(SatelliteFetchResponse,     ext / "satellite_fetch_response.json")
+    export(MLDetectRequest,            ext / "ml_detect_request.json")
     export(MLDetectChangeResponse,     ext / "ml_detect_change_response.json")
     export(GISAnalyzeChangeResponse,   ext / "gis_analyze_change_response.json")
     export(IntelligenceResponse,       ext / "intelligence_response.json")

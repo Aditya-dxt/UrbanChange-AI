@@ -125,6 +125,8 @@ def upgrade() -> None:
         sa.Column("confidence", sa.Float(), nullable=False),
         sa.Column("changed_area_pixels", sa.Integer(), nullable=False),
         sa.Column("change_mask_path", sa.Text(), nullable=True),
+        sa.Column("mask_preview_path", sa.Text(), nullable=True),
+        sa.Column("mask_bounds", postgresql.JSONB(), nullable=True),
         sa.Column("change_regions", postgresql.JSONB(), nullable=True),
         sa.Column("model_version", sa.String(128), nullable=False),
         sa.Column("preprocessing_version", sa.String(64), nullable=True),

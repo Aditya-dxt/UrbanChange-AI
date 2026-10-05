@@ -218,11 +218,25 @@ Returns `503` if the database is unreachable.
 **Request (sent by backend):**
 ```json
 {
-  "before": { "path": "sentinel2/2025/before.tif", "date": "2025-04-14", "sensor": "Sentinel-2", "crs": "EPSG:32643", "resolution": 10.0 },
-  "after":  { "path": "sentinel2/2026/after.tif",  "date": "2026-01-18", "sensor": "Sentinel-2", "crs": "EPSG:32643", "resolution": 10.0 },
+  "before": {
+    "image_path": "sentinel2/2025/before.tif",
+    "acquisition_date": "2025-04-14",
+    "sensor": "Sentinel-2",
+    "crs": "EPSG:32643",
+    "resolution": 10.0
+  },
+  "after": {
+    "image_path": "sentinel2/2026/after.tif",
+    "acquisition_date": "2026-01-18",
+    "sensor": "Sentinel-2",
+    "crs": "EPSG:32643",
+    "resolution": 10.0
+  },
+  "sensor": "Sentinel-2",
   "investigation_id": "<uuid>"
 }
 ```
+> *Note on request aliases:* Canonical fields are `image_path` and `acquisition_date`. The backend mapper also accepts `path` and `date` as backward-compatible aliases.
 
 **Response (must return):**
 ```json
@@ -231,7 +245,19 @@ Returns `503` if the database is unreachable.
   "confidence": 0.94,
   "changed_area_pixels": 38420,
   "change_mask_path": "outputs/masks/investigation_001.tif",
-  "change_regions": [ { "geometry": { "type": "Polygon", "coordinates": […] }, "area_pixels": 38420, "confidence": 0.94, "label": "construction" } ],
+  "mask_preview_path": "outputs/masks/investigation_001_preview.png",
+  "mask_bounds": [77.15, 28.55, 77.18, 28.58],
+  "change_regions": [
+    {
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.15, 28.55], [77.18, 28.55], [77.18, 28.58], [77.15, 28.58], [77.15, 28.55]]]
+      },
+      "area_pixels": 38420,
+      "confidence": 0.94,
+      "label": "construction"
+    }
+  ],
   "classification": { "label": "construction", "confidence": 0.91 },
   "model_version": "siamese-unet-attention-v1",
   "preprocessing_version": "v1.0",
@@ -239,8 +265,16 @@ Returns `503` if the database is unreachable.
 }
 ```
 
-> Alias accepted by mapper: `mask_path` → `change_mask_path`
-> Full JSON Schema: `shared/schemas/external/ml_detect_change_response.json`
+> **Aliases accepted by mapper:**
+> - `mask_path` → `change_mask_path`
+> - `preview_path` → `mask_preview_path`
+> - `bounds` → `mask_bounds`
+>
+> **Preview support:** `mask_preview_path` and `mask_bounds` (`[west, south, east, north]`) are optional. If absent, the backend returns `mask_preview_url = null` and `mask_preview_available = false` to the frontend without failing.
+>
+> **Geometry requirement:** `change_regions[].geometry` **must** be a valid GeoJSON Polygon in WGS84 (`EPSG:4326`), with coordinates formatted as `[longitude, latitude]` (`-180 <= lon <= 180`, `-90 <= lat <= 90`). The ML mapper strictly validates this and returns a clear error naming module `"ml"` and the offending field if the check fails.
+>
+> Full JSON Schemas: `shared/schemas/external/ml_detect_request.json`, `shared/schemas/external/ml_detect_change_response.json`  
 > Example fixtures: `backend/tests/contracts/ml/`
 
 ---

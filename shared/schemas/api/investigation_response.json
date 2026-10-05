@@ -44,6 +44,38 @@
           "default": null,
           "title": "Change Mask Url"
         },
+        "mask_preview_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mask Preview Url"
+        },
+        "mask_preview_available": {
+          "default": false,
+          "title": "Mask Preview Available",
+          "type": "boolean"
+        },
+        "bounds": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bounds"
+        },
         "change_regions": {
           "items": {
             "additionalProperties": true,

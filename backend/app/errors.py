@@ -46,17 +46,25 @@ class UrbanChangeError(Exception):
 class MapperError(UrbanChangeError):
     """
     Raised when a module mapper cannot translate an external payload to
-    the internal schema because a required field is absent.
+    the internal schema because a required field is absent or invalid.
     """
 
-    def __init__(self, module: str, stage: str, missing_field: str) -> None:
+    def __init__(
+        self,
+        module: str,
+        stage: str,
+        missing_field: str,
+        reason: str | None = None,
+        message: str | None = None,
+    ) -> None:
+        msg = message or (
+            f"Module '{module}' returned an invalid payload at stage "
+            f"'{stage}': required field '{missing_field}' is absent."
+        )
         super().__init__(
             code="MAPPER_ERROR",
-            message=(
-                f"Module '{module}' returned an invalid payload at stage "
-                f"'{stage}': required field '{missing_field}' is absent."
-            ),
-            reason=f"missing_field={missing_field!r}",
+            message=msg,
+            reason=reason or f"missing_field={missing_field!r}",
             status_code=502,
         )
         self.module = module

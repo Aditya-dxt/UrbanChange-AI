@@ -227,11 +227,17 @@ class InvestigationService:
         )
         cls = cls_result.scalars().first()
 
+        preview_path = getattr(det, "mask_preview_path", None)
+        mask_preview_url = self._asset.path_to_url(preview_path) if preview_path else None
+
         return DetectionOut(
             change_detected=det.change_detected,
             confidence=det.confidence,
             changed_area_pixels=det.changed_area_pixels,
             change_mask_url=self._asset.path_to_url(det.change_mask_path),
+            mask_preview_url=mask_preview_url,
+            mask_preview_available=bool(mask_preview_url),
+            bounds=getattr(det, "mask_bounds", None),
             change_regions=det.change_regions or [],
             classification=(
                 ClassificationOut(label=cls.label, confidence=cls.confidence)

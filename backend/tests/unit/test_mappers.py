@@ -16,7 +16,7 @@ from datetime import date
 
 from app.errors import MapperError
 from app.adapters.mappers.satellite_mapper import map_satellite_fetch, map_satellite_search
-from app.adapters.mappers.ml_mapper import map_ml_detect_change
+from app.adapters.mappers.ml_mapper import map_ml_detect_change, map_ml_request
 from app.adapters.mappers.gis_mapper import map_gis_analyze_change
 from app.adapters.mappers.intelligence_mapper import (
     map_intelligence_response,
@@ -146,12 +146,19 @@ class TestSatelliteMapper:
 # ML mapper
 # ══════════════════════════════════════════════════════════════════════════════
 
+VALID_ML_POLYGON = {
+    "type": "Polygon",
+    "coordinates": [[[77.15, 28.55], [77.18, 28.55], [77.18, 28.58], [77.15, 28.58], [77.15, 28.55]]],
+}
+
 VALID_ML = {
     "change_detected": True,
     "confidence": 0.94,
     "changed_area_pixels": 15420,
     "change_mask_path": "/data/storage/mask.tif",
-    "change_regions": [{"type": "Feature", "geometry": {"type": "Polygon"}}],
+    "mask_preview_path": "/data/storage/mask_preview.png",
+    "mask_bounds": [77.15, 28.55, 77.18, 28.58],
+    "change_regions": [{"type": "Feature", "geometry": VALID_ML_POLYGON}],
     "classification": {"label": "construction", "confidence": 0.87},
     "model_version": "urbanchange-v1.2.0",
     "preprocessing_version": "preproc-v0.3",
@@ -167,6 +174,8 @@ class TestMLMapper:
         assert det.confidence == pytest.approx(0.94)
         assert det.changed_area_pixels == 15420
         assert det.change_mask_path == "/data/storage/mask.tif"
+        assert det.mask_preview_path == "/data/storage/mask_preview.png"
+        assert det.mask_bounds == [77.15, 28.55, 77.18, 28.58]
         assert len(det.change_regions) == 1
         assert det.classification is not None
         assert det.classification.label == "construction"
@@ -179,6 +188,141 @@ class TestMLMapper:
         ml["mask_path"] = "/data/storage/alias_mask.tif"
         det, _ = map_ml_detect_change(ml)
         assert det.change_mask_path == "/data/storage/alias_mask.tif"
+
+    def test_mask_preview_and_bounds_aliases(self):
+        ml = {**VALID_ML}
+        del ml["mask_preview_path"]
+        del ml["mask_bounds"]
+        ml["preview_path"] = "/data/storage/alias_preview.png"
+        ml["bounds"] = [77.10, 28.50, 77.30, 28.70]
+        det, _ = map_ml_detect_change(ml)
+        assert det.mask_preview_path == "/data/storage/alias_preview.png"
+        assert det.mask_bounds == [77.10, 28.50, 77.30, 28.70]
+
+    def test_mask_preview_absent_defaults_to_none(self):
+        ml = {**VALID_ML}
+        del ml["mask_preview_path"]
+        del ml["mask_bounds"]
+        det, _ = map_ml_detect_change(ml)
+        assert det.mask_preview_path is None
+        assert det.mask_bounds is None
+
+    def test_mask_bounds_invalid_ignored(self):
+        # 3 elements instead of 4
+        ml = {**VALID_ML, "mask_bounds": [77.15, 28.55, 77.18]}
+        det, _ = map_ml_detect_change(ml)
+        assert det.mask_bounds is None
+
+        # Coordinates out of range
+        ml = {**VALID_ML, "mask_bounds": [200.0, 28.55, 77.18, 28.58]}
+        det, _ = map_ml_detect_change(ml)
+        assert det.mask_bounds is None
+
+    def test_map_ml_request_canonical(self):
+        req = {
+            "before": {"image_path": "before.tif", "acquisition_date": "2025-04-14"},
+            "after": {"image_path": "after.tif", "acquisition_date": "2026-01-18"},
+        }
+        mapped = map_ml_request(req)
+        assert mapped["before"]["image_path"] == "before.tif"
+        assert mapped["before"]["acquisition_date"] == "2025-04-14"
+        assert mapped["after"]["image_path"] == "after.tif"
+        assert mapped["after"]["acquisition_date"] == "2026-01-18"
+
+    def test_map_ml_request_aliases(self):
+        req = {
+            "before": {"path": "before.tif", "date": "2025-04-14"},
+            "after": {"path": "after.tif", "date": "2026-01-18"},
+        }
+        mapped = map_ml_request(req)
+        assert mapped["before"]["image_path"] == "before.tif"
+        assert mapped["before"]["acquisition_date"] == "2025-04-14"
+        assert "path" not in mapped["before"]
+        assert "date" not in mapped["before"]
+        assert mapped["after"]["image_path"] == "after.tif"
+        assert mapped["after"]["acquisition_date"] == "2026-01-18"
+
+    def test_change_regions_missing_geometry_raises(self):
+        ml = {**VALID_ML, "change_regions": [{"area_pixels": 100}]}
+        with pytest.raises(MapperError) as exc:
+            map_ml_detect_change(ml)
+        assert exc.value.module == "ml"
+        assert "change_regions[].geometry" in exc.value.missing_field
+
+    def test_change_regions_geometry_not_polygon_raises(self):
+        ml = {
+            **VALID_ML,
+            "change_regions": [
+                {"geometry": {"type": "Point", "coordinates": [77.15, 28.55]}}
+            ],
+        }
+        with pytest.raises(MapperError) as exc:
+            map_ml_detect_change(ml)
+        assert exc.value.module == "ml"
+        assert "change_regions[].geometry" in exc.value.missing_field
+
+    def test_change_regions_geometry_empty_coordinates_raises(self):
+        ml = {
+            **VALID_ML,
+            "change_regions": [
+                {"geometry": {"type": "Polygon", "coordinates": []}}
+            ],
+        }
+        with pytest.raises(MapperError) as exc:
+            map_ml_detect_change(ml)
+        assert exc.value.module == "ml"
+        assert "change_regions[].geometry" in exc.value.missing_field
+
+    def test_change_regions_geometry_ring_too_few_points_raises(self):
+        ml = {
+            **VALID_ML,
+            "change_regions": [
+                {
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[[77.15, 28.55], [77.18, 28.55], [77.15, 28.55]]],
+                    }
+                }
+            ],
+        }
+        with pytest.raises(MapperError) as exc:
+            map_ml_detect_change(ml)
+        assert exc.value.module == "ml"
+        assert "change_regions[].geometry" in exc.value.missing_field
+
+    def test_change_regions_geometry_longitude_out_of_range_raises(self):
+        ml = {
+            **VALID_ML,
+            "change_regions": [
+                {
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[[200.0, 28.55], [77.18, 28.55], [77.18, 28.58], [200.0, 28.55]]],
+                    }
+                }
+            ],
+        }
+        with pytest.raises(MapperError) as exc:
+            map_ml_detect_change(ml)
+        assert exc.value.module == "ml"
+        assert "change_regions[].geometry" in exc.value.missing_field
+
+    def test_change_regions_geometry_latitude_out_of_range_raises(self):
+        ml = {
+            **VALID_ML,
+            "change_regions": [
+                {
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[[77.15, 95.0], [77.18, 95.0], [77.18, 28.58], [77.15, 95.0]]],
+                    }
+                }
+            ],
+        }
+        with pytest.raises(MapperError) as exc:
+            map_ml_detect_change(ml)
+        assert exc.value.module == "ml"
+        assert "change_regions[].geometry" in exc.value.missing_field
 
     def test_no_change_detected(self):
         ml = {**VALID_ML, "change_detected": False, "confidence": 0.12}

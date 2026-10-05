@@ -1,18 +1,19 @@
 {
   "_comment": "Example request body sent BY the backend TO POST /ml/detect-change",
   "before": {
-    "path": "sentinel2/2025/before.tif",
-    "date": "2025-04-14",
+    "image_path": "sentinel2/2025/before.tif",
+    "acquisition_date": "2025-04-14",
     "sensor": "Sentinel-2",
     "crs": "EPSG:32643",
     "resolution": 10.0
   },
   "after": {
-    "path": "sentinel2/2026/after.tif",
-    "date": "2026-01-18",
+    "image_path": "sentinel2/2026/after.tif",
+    "acquisition_date": "2026-01-18",
     "sensor": "Sentinel-2",
     "crs": "EPSG:32643",
     "resolution": 10.0
   },
+  "sensor": "Sentinel-2",
   "investigation_id": "550e8400-e29b-41d4-a716-446655440000"
 }

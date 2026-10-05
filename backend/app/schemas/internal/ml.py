@@ -22,6 +22,8 @@ class DetectionInternal(BaseModel):
     confidence: float = Field(ge=0, le=1)
     changed_area_pixels: int = Field(ge=0)
     change_mask_path: Optional[str] = None
+    mask_preview_path: Optional[str] = None
+    mask_bounds: Optional[list[float]] = None
     change_regions: list[dict[str, Any]] = Field(default_factory=list)
     classification: Optional[ClassificationInternal] = None
     model_version: str

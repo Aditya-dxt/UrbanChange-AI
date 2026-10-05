@@ -188,6 +188,8 @@ class Detection(Base):
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
     changed_area_pixels: Mapped[int] = mapped_column(Integer, nullable=False)
     change_mask_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mask_preview_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mask_bounds: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     # GeoJSON feature list stored as JSONB
     change_regions: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     model_version: Mapped[str] = mapped_column(String(128), nullable=False)

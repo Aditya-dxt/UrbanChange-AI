@@ -73,6 +73,40 @@ def _skip(msg: str = "SKIPPED") -> str:
 
 # -- Contract fixture loader ----------------------------------------------------
 
+MODULE_FIXTURES: dict[str, dict[str, str]] = {
+    "satellite": {
+        "search_request": "search_request.json",
+        "search_response": "search_response.json",
+        "fetch_request": "fetch_request.json",
+        "fetch_response": "fetch_response.json",
+    },
+    "ml": {
+        "request": "request.json",
+        "response": "response.json",
+    },
+    "gis": {
+        "request": "request.json",
+        "response": "response.json",
+    },
+    "intelligence": {
+        "request": "request.json",
+        "response": "response.json",
+    },
+}
+
+
+def _verify_all_fixtures() -> None:
+    """Verify that every required fixture file exists before running checks."""
+    missing = []
+    for module, files in MODULE_FIXTURES.items():
+        for role, filename in files.items():
+            path = _CONTRACTS / module / filename
+            if not path.exists():
+                missing.append(f"{module}/{filename}")
+    if missing:
+        raise FileNotFoundError(f"Missing required contract fixture files: {', '.join(missing)}")
+
+
 def _load_fixture(module: str, filename: str) -> dict:
     path = _CONTRACTS / module / filename
     if not path.exists():
@@ -96,7 +130,7 @@ async def check_satellite(settings) -> tuple[str, str, Optional[str]]:
         fetch_fixture = _load_fixture("satellite", "fetch_response.json")
 
         # Call search
-        search_req = _load_fixture("satellite", "search_request.json")
+        search_req = _load_fixture("satellite", MODULE_FIXTURES["satellite"]["search_request"])
         raw_search = await adapter.search(
             bbox=search_req["bbox"],
             historical_date=search_req["historical_date"],
@@ -107,7 +141,7 @@ async def check_satellite(settings) -> tuple[str, str, Optional[str]]:
         _, _ = map_satellite_search(raw_search)
 
         # Call fetch
-        fetch_req = _load_fixture("satellite", "fetch_request.json")
+        fetch_req = _load_fixture("satellite", MODULE_FIXTURES["satellite"]["fetch_request"])
         raw_fetch = await adapter.fetch(
             scene_id=fetch_req["scene_id"],
             bbox=fetch_req["bbox"],
@@ -127,16 +161,18 @@ async def check_ml(settings) -> tuple[str, str, Optional[str]]:
 
     try:
         adapter = get_ml_adapter(settings)
-        req = _load_fixture("ml", "detect_request.json")
+        req = _load_fixture("ml", MODULE_FIXTURES["ml"]["request"])
+        before_cfg = req["before"]
+        after_cfg = req["after"]
         raw = await adapter.detect_change(
-            before_path=req["before"]["image_path"],
-            before_date=req["before"]["acquisition_date"],
-            before_crs=req["before"].get("crs"),
-            before_resolution=req["before"].get("resolution"),
-            after_path=req["after"]["image_path"],
-            after_date=req["after"]["acquisition_date"],
-            after_crs=req["after"].get("crs"),
-            after_resolution=req["after"].get("resolution"),
+            before_path=before_cfg.get("image_path") or before_cfg.get("path"),
+            before_date=before_cfg.get("acquisition_date") or before_cfg.get("date"),
+            before_crs=before_cfg.get("crs"),
+            before_resolution=before_cfg.get("resolution"),
+            after_path=after_cfg.get("image_path") or after_cfg.get("path"),
+            after_date=after_cfg.get("acquisition_date") or after_cfg.get("date"),
+            after_crs=after_cfg.get("crs"),
+            after_resolution=after_cfg.get("resolution"),
             sensor=req.get("sensor", "Sentinel-2"),
             investigation_id=req.get("investigation_id", "check-test"),
         )
@@ -154,7 +190,7 @@ async def check_gis(settings) -> tuple[str, str, Optional[str]]:
 
     try:
         adapter = get_gis_adapter(settings)
-        req = _load_fixture("gis", "analyze_request.json")
+        req = _load_fixture("gis", MODULE_FIXTURES["gis"]["request"])
         raw = await adapter.analyze_change(
             change_regions=req.get("change_regions", []),
             bbox=req["bbox"],
@@ -175,7 +211,7 @@ async def check_intelligence(settings) -> tuple[str, str, Optional[str]]:
 
     try:
         adapter = get_intelligence_adapter(settings)
-        req = _load_fixture("intelligence", "analyze_request.json")
+        req = _load_fixture("intelligence", MODULE_FIXTURES["intelligence"]["request"])
         raw = await adapter.analyze(req)
         result, _ = map_intelligence_response(raw)
         fp_id = result.fingerprint.fingerprint_id if result.fingerprint else "none"
@@ -221,6 +257,9 @@ async def run_all() -> int:
     print(f"{_BOLD}UrbanChange AI — Module Integration Checker{_RESET}")
     print(f"CONTRACT_VERSION: {settings.contract_version}")
     print()
+
+    # Verify all contract fixture example files are present on disk
+    _verify_all_fixtures()
 
     checks = await asyncio.gather(
         check_satellite(settings),

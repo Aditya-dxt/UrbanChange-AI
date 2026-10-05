@@ -1,7 +1,7 @@
 {
   "$defs": {
     "ChangeRegion": {
-      "description": "A single spatially-localised change region returned by ML.",
+      "description": "A single spatially-localised change region returned by ML.\nGeometry MUST be a GeoJSON Polygon in WGS84 (EPSG:4326), [longitude, latitude].",
       "properties": {
         "geometry": {
           "anyOf": [
@@ -108,6 +108,35 @@
       ],
       "default": null,
       "title": "Mask Path"
+    },
+    "preview_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Preview Path"
+    },
+    "bounds": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Bounds"
     },
     "change_regions": {
       "items": {

@@ -1,0 +1,5 @@
+{
+  "_comment": "Example request body sent BY the backend TO POST /satellite/fetch",
+  "scene_id": "S2A_MSIL2A_20250414T052651_N0511_R105_T43RGK_20250414T073812",
+  "bbox": [77.1, 28.5, 77.3, 28.7]
+}

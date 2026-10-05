@@ -61,7 +61,10 @@ class DetectionOut(BaseModel):
     change_detected: bool
     confidence: float
     changed_area_pixels: int
-    change_mask_url: Optional[str] = None   # /api/assets/… URL or null
+    change_mask_url: Optional[str] = None       # /api/assets/… URL or null
+    mask_preview_url: Optional[str] = None      # /api/assets/… URL or null
+    mask_preview_available: bool = False
+    bounds: Optional[list[float]] = None        # [west, south, east, north] or null
     change_regions: list[dict[str, Any]] = Field(default_factory=list)
     classification: Optional[ClassificationOut] = None
     model_version: str

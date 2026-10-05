@@ -4,6 +4,8 @@
   "confidence": 0.94,
   "changed_area_pixels": 38420,
   "change_mask_path": "outputs/masks/investigation_001.tif",
+  "mask_preview_path": "outputs/masks/investigation_001_preview.png",
+  "mask_bounds": [77.15, 28.55, 77.18, 28.58],
   "change_regions": [
     {
       "geometry": {

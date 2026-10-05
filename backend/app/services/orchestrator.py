@@ -297,6 +297,8 @@ class PipelineOrchestrator:
                 confidence=det_internal.confidence,
                 changed_area_pixels=det_internal.changed_area_pixels,
                 change_mask_path=det_internal.change_mask_path,
+                mask_preview_path=det_internal.mask_preview_path,
+                mask_bounds=det_internal.mask_bounds,
                 change_regions=det_internal.change_regions,
                 model_version=det_internal.model_version,
                 preprocessing_version=det_internal.preprocessing_version,

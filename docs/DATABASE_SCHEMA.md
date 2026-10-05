@@ -84,8 +84,10 @@ ML change-detection result.
 | `change_detected` | boolean | NO | |
 | `confidence` | float | NO | 0–1 |
 | `changed_area_pixels` | integer | NO | |
-| `change_mask_path` | text | YES | Relative to `STORAGE_ROOT` |
-| `change_regions` | jsonb | YES | GeoJSON Feature array |
+| `change_mask_path` | text | YES | Relative to `STORAGE_ROOT` (TIF) |
+| `mask_preview_path` | text | YES | Relative to `STORAGE_ROOT` (PNG preview) |
+| `mask_bounds` | jsonb | YES | `[west, south, east, north]` |
+| `change_regions` | jsonb | YES | GeoJSON Feature array (WGS84 Polygons) |
 | `model_version` | varchar(128) | NO | e.g. `siamese-unet-attention-v1` |
 | `preprocessing_version` | varchar(64) | YES | |
 | `threshold` | float | YES | Decision threshold used |

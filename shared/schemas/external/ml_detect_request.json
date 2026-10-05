@@ -1,0 +1,85 @@
+{
+  "$defs": {
+    "MLImagePair": {
+      "description": "Single image descriptor sent to the ML service.",
+      "properties": {
+        "image_path": {
+          "title": "Image Path",
+          "type": "string"
+        },
+        "acquisition_date": {
+          "title": "Acquisition Date",
+          "type": "string"
+        },
+        "sensor": {
+          "default": "Sentinel-2",
+          "title": "Sensor",
+          "type": "string"
+        },
+        "crs": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crs"
+        },
+        "resolution": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolution"
+        }
+      },
+      "required": [
+        "image_path",
+        "acquisition_date"
+      ],
+      "title": "MLImagePair",
+      "type": "object"
+    }
+  },
+  "description": "Body sent BY the backend TO the ML service.",
+  "properties": {
+    "before": {
+      "$ref": "#/$defs/MLImagePair"
+    },
+    "after": {
+      "$ref": "#/$defs/MLImagePair"
+    },
+    "sensor": {
+      "default": "Sentinel-2",
+      "title": "Sensor",
+      "type": "string"
+    },
+    "investigation_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Investigation Id"
+    }
+  },
+  "required": [
+    "before",
+    "after"
+  ],
+  "title": "MLDetectRequest",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}
