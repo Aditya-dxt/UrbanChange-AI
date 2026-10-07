@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     cors_origins: list[str] = ["http://localhost:5173"]
+    require_auth: bool = False
+    api_key: str = ""
 
     # ── Database ─────────────────────────────────────────────────────────────
     database_url: str = (

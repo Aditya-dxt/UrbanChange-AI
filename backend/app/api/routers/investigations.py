@@ -27,7 +27,7 @@ from fastapi.responses import JSONResponse
 
 from app.adapters.factory import get_intelligence_adapter
 from app.adapters.mappers.intelligence_mapper import map_assistant_response
-from app.api.deps import DBSession, SettingsDep
+from app.api.deps import AuthDep, DBSession, SettingsDep
 from app.errors import InvestigationNotFoundError
 from app.schemas.api import (
     AssistantAskRequest,
@@ -50,12 +50,12 @@ router = APIRouter(prefix="/api/investigations", tags=["investigations"])
 # ── Simple in-memory rate limiter for /run ────────────────────────────────────
 # Key: client IP, Value: list of call datetimes in the current minute window
 _run_call_log: dict[str, list[datetime]] = defaultdict(list)
+_upload_call_log: dict[str, list[datetime]] = defaultdict(list)
 
 
 def _check_run_rate_limit(client_ip: str, limit_per_minute: int) -> bool:
     """Return True if the request is within the rate limit, False if exceeded."""
     now = datetime.now(timezone.utc)
-    # Keep only calls in the current 60-second window
     cutoff = now.timestamp() - 60
     calls = [t for t in _run_call_log[client_ip] if t.timestamp() > cutoff]
     if len(calls) >= limit_per_minute:
@@ -63,6 +63,19 @@ def _check_run_rate_limit(client_ip: str, limit_per_minute: int) -> bool:
         return False
     calls.append(now)
     _run_call_log[client_ip] = calls
+    return True
+
+
+def _check_upload_rate_limit(client_ip: str, limit_per_minute: int) -> bool:
+    """Rate limit check specifically for /upload endpoint."""
+    now = datetime.now(timezone.utc)
+    cutoff = now.timestamp() - 60
+    calls = [t for t in _upload_call_log[client_ip] if t.timestamp() > cutoff]
+    if len(calls) >= limit_per_minute:
+        _upload_call_log[client_ip] = calls
+        return False
+    calls.append(now)
+    _upload_call_log[client_ip] = calls
     return True
 
 
@@ -107,6 +120,7 @@ async def create_investigation(
     summary="Create a new investigation from uploaded before/after images",
 )
 async def upload_investigation(
+    request: Request,
     before: UploadFile = File(...),
     after: UploadFile = File(...),
     bbox: Optional[str] = Form(None),
@@ -114,11 +128,20 @@ async def upload_investigation(
     current_date: Optional[str] = Form(None),
     db: DBSession = None,
     settings: SettingsDep = None,
+    auth: AuthDep = None,
 ) -> InvestigationCreateResponse:
     """
     Create a new investigation directly from an uploaded before/after pair
     (GeoTIFF, PNG, JPEG). Reuses the orchestrator pipeline starting at the ML stage.
     """
+    # Rate limit check
+    limit = settings.run_rate_limit_per_minute
+    if not _check_upload_rate_limit(_client_ip(request), limit):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded: max {limit} upload calls per minute per IP.",
+        )
+
     allowed_exts = {".tif", ".tiff", ".png", ".jpg", ".jpeg"}
     before_ext = Path(before.filename or "before.tif").suffix.lower()
     after_ext = Path(after.filename or "after.tif").suffix.lower()
@@ -129,15 +152,23 @@ async def upload_investigation(
             detail="Unsupported file extension. Allowed formats: GeoTIFF (.tif, .tiff), PNG (.png), JPEG (.jpg, .jpeg).",
         )
 
-    # Resolve bounding box
+    # Resolve and validate bounding box
     parsed_bbox = [80.30, 26.40, 80.40, 26.50]
     if bbox:
         try:
             val = json.loads(bbox) if bbox.strip().startswith("[") else [float(x.strip()) for x in bbox.split(",")]
             if len(val) == 4:
-                parsed_bbox = [float(x) for x in val]
-        except Exception:
-            pass
+                w, s, e, n = [float(x) for x in val]
+                if not (-180 <= w <= 180 and -180 <= e <= 180 and -90 <= s <= 90 and -90 <= n <= 90):
+                    raise ValueError("Coordinates out of range")
+                if s >= n or w > e:
+                    raise ValueError("Invalid bounding box ordering")
+                parsed_bbox = [w, s, e, n]
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid bbox parameter: {e}",
+            )
 
     # Resolve dates
     from datetime import date
@@ -155,7 +186,8 @@ async def upload_investigation(
         except Exception:
             pass
 
-    # Save uploaded files into storage root
+    # Save uploaded files into storage root with size limits (max 50 MB)
+    MAX_FILE_BYTES = 50 * 1024 * 1024
     upload_id = uuid.uuid4()
     target_dir = Path(settings.storage_root) / "uploads" / str(upload_id)
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -163,10 +195,19 @@ async def upload_investigation(
     before_path = target_dir / f"before{before_ext}"
     after_path = target_dir / f"after{after_ext}"
 
+    # Read and validate size
+    b_bytes = await before.read()
+    a_bytes = await after.read()
+    if len(b_bytes) > MAX_FILE_BYTES or len(a_bytes) > MAX_FILE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Uploaded file exceeds maximum allowed size of {MAX_FILE_BYTES // (1024*1024)} MB.",
+        )
+
     with open(before_path, "wb") as f_out:
-        shutil.copyfileobj(before.file, f_out)
+        f_out.write(b_bytes)
     with open(after_path, "wb") as f_out:
-        shutil.copyfileobj(after.file, f_out)
+        f_out.write(a_bytes)
 
     svc = InvestigationService(db, AssetService(Path(settings.storage_root)))
     return await svc.create_with_observations(
