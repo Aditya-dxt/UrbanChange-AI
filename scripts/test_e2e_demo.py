@@ -49,8 +49,8 @@ def run_e2e(base_url: str) -> None:
     aoi_payload = {
         "title": "E2E Test AOI - Delhi Sector 4",
         "bbox": [77.10, 28.60, 77.20, 28.70],
-        "target_date": "2024-01-15",
-        "baseline_date": "2023-01-15",
+        "historical_date": "2023-01-15",
+        "current_date": "2024-01-15",
     }
     r = client.post("/api/investigations", json=aoi_payload)
     assert r.status_code == 201, f"Create investigation failed: {r.status_code} {r.text}"

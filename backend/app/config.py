@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     app_env: Literal["development", "staging", "production"] = "development"
     secret_key: str = "change-me-in-production"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
-    cors_origins: list[str] = ["http://localhost:5173"]
+    cors_origins: list[str] | str = ["http://localhost:5173"]
     require_auth: bool = False
     api_key: str = ""
 
@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     intelligence_python_entrypoint: str = ""
 
     # ── Pipeline configuration ────────────────────────────────────────────────
-    context_layer_ids: list[str] = []
+    context_layer_ids: list[str] | str = []
     temporal_max_observations: int = 0  # 0 = MVP two-date mode
 
     # ── Rate limiting ─────────────────────────────────────────────────────────
@@ -79,14 +79,28 @@ class Settings(BaseSettings):
     def _parse_cors(cls, v: object) -> list[str]:
         """Accept comma-separated string from env or a list."""
         if isinstance(v, str):
-            return [o.strip() for o in v.split(",") if o.strip()]
+            v_str = v.strip()
+            if v_str.startswith("[") and v_str.endswith("]"):
+                import json
+                try:
+                    return json.loads(v_str)
+                except Exception:
+                    pass
+            return [o.strip() for o in v_str.split(",") if o.strip()]
         return v  # type: ignore[return-value]
 
     @field_validator("context_layer_ids", mode="before")
     @classmethod
     def _parse_layer_ids(cls, v: object) -> list[str]:
         if isinstance(v, str):
-            return [i.strip() for i in v.split(",") if i.strip()]
+            v_str = v.strip()
+            if v_str.startswith("[") and v_str.endswith("]"):
+                import json
+                try:
+                    return json.loads(v_str)
+                except Exception:
+                    pass
+            return [i.strip() for i in v_str.split(",") if i.strip()]
         return v  # type: ignore[return-value]
 
     @model_validator(mode="after")
