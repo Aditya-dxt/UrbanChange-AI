@@ -131,7 +131,7 @@ export default function App() {
             </>}
           </>}
           {tab === 'gis' && (d?.gis ? <GisPanel gis={d.gis} /> : <Empty t="Run a detection to see sensitive-zone overlap and land-cover context." />)}
-          {tab === 'fp' && (d?.fingerprint ? <><FingerprintCard f={d.fingerprint} /><EvidencePanel evidence={d.evidence} text={d.explanation} /></> : <Empty t="The change fingerprint and evidence appear after a detection that finds change." />)}
+          {tab === 'fp' && (d?.fingerprint ? <><FingerprintCard f={d.fingerprint} /><EvidencePanel evidence={d.evidence} text={d.explanation} graph={d.evidence_graph} /></> : <Empty t="The change fingerprint and evidence appear after a detection that finds change." />)}
           {tab === 'time' && (d?.temporal ? <Timeline events={d.temporal} idx={Math.min(tIdx, d.temporal.length - 1)} onIdx={setTIdx} /> : <Empty t={d ? 'Timeline unavailable: not enough suitable intermediate observations.' : 'Run a detection to reconstruct how the change developed.'} />)}
           {tab === 'ask' && (d && det ? <Assistant investigationId={d.id} /> : <Empty t="The assistant answers from the computed evidence. Run a detection first." />)}
           {tab === 'upload' && <UploadMode />}

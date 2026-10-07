@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Optional
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from app.adapters.base import (
@@ -156,6 +157,45 @@ class PipelineOrchestrator:
         self, inv: Investigation
     ) -> Optional[SatelliteStageResult]:
         try:
+            # Check if observations were pre-populated (e.g. manual upload)
+            existing_obs = (
+                await self._db.execute(
+                    select(SatelliteObservation).where(SatelliteObservation.investigation_id == inv.id)
+                )
+            ).scalars().all()
+            before_obs = next((o for o in existing_obs if o.role == "before"), None)
+            after_obs = next((o for o in existing_obs if o.role == "after"), None)
+            if before_obs and after_obs:
+                log.info("orchestrator: using pre-populated observations id=%s", inv.id)
+                await self._set_stage(inv, STAGE_PREPROCESSING)
+                return SatelliteStageResult(
+                    success=True,
+                    before=ObservationInternal(
+                        scene_id=before_obs.scene_id or f"upload-before-{inv.id}",
+                        sensor=before_obs.sensor or "manual-upload",
+                        acquisition_date=before_obs.acquisition_date,
+                        cloud_cover=before_obs.cloud_cover or 0.0,
+                        crs=before_obs.crs or "EPSG:4326",
+                        resolution=before_obs.resolution or 10.0,
+                        image_path=before_obs.image_path,
+                        preview_path=before_obs.preview_path,
+                        bounds=before_obs.bounds or inv.bbox or [0.0, 0.0, 0.0, 0.0],
+                        role="before",
+                    ),
+                    after=ObservationInternal(
+                        scene_id=after_obs.scene_id or f"upload-after-{inv.id}",
+                        sensor=after_obs.sensor or "manual-upload",
+                        acquisition_date=after_obs.acquisition_date,
+                        cloud_cover=after_obs.cloud_cover or 0.0,
+                        crs=after_obs.crs or "EPSG:4326",
+                        resolution=after_obs.resolution or 10.0,
+                        image_path=after_obs.image_path,
+                        preview_path=after_obs.preview_path,
+                        bounds=after_obs.bounds or inv.bbox or [0.0, 0.0, 0.0, 0.0],
+                        role="after",
+                    ),
+                )
+
             await self._set_stage(inv, STAGE_SEARCHING)
             bbox = inv.bbox or []
             hist = inv.historical_date.isoformat()

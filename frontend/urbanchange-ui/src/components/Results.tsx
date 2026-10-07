@@ -21,7 +21,7 @@ export default function Results({ inv }: { inv: Investigation }) {
     {inv.temporal && <Timeline events={inv.temporal} idx={idx} onIdx={setIdx} />}
     <div className="grid gap-3 ">
       {inv.fingerprint && <FingerprintCard f={inv.fingerprint} />}
-      {d && <EvidencePanel evidence={inv.evidence} text={inv.explanation} />}
+      {d && <EvidencePanel evidence={inv.evidence} text={inv.explanation} graph={inv.evidence_graph} />}
     </div>
     {d && <Assistant investigationId={inv.id} />}
   </div>

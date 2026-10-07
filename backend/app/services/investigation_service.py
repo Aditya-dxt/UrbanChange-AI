@@ -94,6 +94,59 @@ class InvestigationService:
         log.info("investigation.created id=%s", inv.id)
         return InvestigationCreateResponse(id=inv.id, status=inv.status)
 
+    async def create_with_observations(
+        self,
+        bbox: list[float],
+        historical_date: date,
+        current_date: date,
+        before_path: str,
+        after_path: str,
+        before_preview: Optional[str] = None,
+        after_preview: Optional[str] = None,
+    ) -> InvestigationCreateResponse:
+        aoi = WKTElement(_bbox_to_wkt(bbox), srid=4326)
+        inv_id = uuid.uuid4()
+        inv = Investigation(
+            id=inv_id,
+            aoi=aoi,
+            bbox=bbox,
+            historical_date=historical_date,
+            current_date=current_date,
+            status="pending",
+        )
+        self._db.add(inv)
+
+        obs_before = SatelliteObservation(
+            id=uuid.uuid4(),
+            investigation_id=inv_id,
+            role="before",
+            scene_id=f"upload-before-{inv_id}",
+            sensor="manual-upload",
+            acquisition_date=historical_date,
+            image_path=before_path,
+            preview_path=before_preview or before_path,
+            bounds=bbox,
+            raw_payload={"source": "manual_upload", "role": "before"},
+        )
+        obs_after = SatelliteObservation(
+            id=uuid.uuid4(),
+            investigation_id=inv_id,
+            role="after",
+            scene_id=f"upload-after-{inv_id}",
+            sensor="manual-upload",
+            acquisition_date=current_date,
+            image_path=after_path,
+            preview_path=after_preview or after_path,
+            bounds=bbox,
+            raw_payload={"source": "manual_upload", "role": "after"},
+        )
+        self._db.add(obs_before)
+        self._db.add(obs_after)
+        await self._db.commit()
+        await self._db.refresh(inv)
+        log.info("investigation.created_with_upload id=%s", inv.id)
+        return InvestigationCreateResponse(id=inv.id, status=inv.status)
+
     # ── Read ───────────────────────────────────────────────────────────────────
 
     async def get_or_404(self, investigation_id: UUID) -> Investigation:

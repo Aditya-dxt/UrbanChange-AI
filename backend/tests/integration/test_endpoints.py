@@ -217,3 +217,19 @@ class TestOpenAPI:
         ]
         for name in required:
             assert name in schemas, f"Schema '{name}' missing from OpenAPI spec"
+
+    @pytest.mark.anyio
+    async def test_upload_endpoint_present_in_openapi(self, async_client: AsyncClient):
+        r = await async_client.get("/openapi.json")
+        spec = r.json()
+        assert "/api/investigations/upload" in spec["paths"]
+
+    @pytest.mark.anyio
+    async def test_upload_invalid_file_extension_returns_400(self, async_client: AsyncClient):
+        files = {
+            "before": ("before.exe", b"fake binary content", "application/octet-stream"),
+            "after": ("after.exe", b"fake binary content", "application/octet-stream"),
+        }
+        r = await async_client.post("/api/investigations/upload", files=files)
+        assert r.status_code == 400
+        assert "Unsupported file extension" in r.text

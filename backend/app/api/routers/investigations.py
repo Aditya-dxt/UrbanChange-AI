@@ -17,10 +17,12 @@ import logging
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+import json
+import shutil
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse
 
 from app.adapters.factory import get_intelligence_adapter
@@ -93,6 +95,86 @@ async def create_investigation(
         bbox=body.bbox,
         historical_date=body.historical_date,
         current_date=body.current_date,
+    )
+
+
+# ── POST /api/investigations/upload ───────────────────────────────────────────
+
+@router.post(
+    "/upload",
+    status_code=status.HTTP_201_CREATED,
+    response_model=InvestigationCreateResponse,
+    summary="Create a new investigation from uploaded before/after images",
+)
+async def upload_investigation(
+    before: UploadFile = File(...),
+    after: UploadFile = File(...),
+    bbox: Optional[str] = Form(None),
+    historical_date: Optional[str] = Form(None),
+    current_date: Optional[str] = Form(None),
+    db: DBSession = None,
+    settings: SettingsDep = None,
+) -> InvestigationCreateResponse:
+    """
+    Create a new investigation directly from an uploaded before/after pair
+    (GeoTIFF, PNG, JPEG). Reuses the orchestrator pipeline starting at the ML stage.
+    """
+    allowed_exts = {".tif", ".tiff", ".png", ".jpg", ".jpeg"}
+    before_ext = Path(before.filename or "before.tif").suffix.lower()
+    after_ext = Path(after.filename or "after.tif").suffix.lower()
+
+    if before_ext not in allowed_exts or after_ext not in allowed_exts:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported file extension. Allowed formats: GeoTIFF (.tif, .tiff), PNG (.png), JPEG (.jpg, .jpeg).",
+        )
+
+    # Resolve bounding box
+    parsed_bbox = [80.30, 26.40, 80.40, 26.50]
+    if bbox:
+        try:
+            val = json.loads(bbox) if bbox.strip().startswith("[") else [float(x.strip()) for x in bbox.split(",")]
+            if len(val) == 4:
+                parsed_bbox = [float(x) for x in val]
+        except Exception:
+            pass
+
+    # Resolve dates
+    from datetime import date
+    h_date = date(2024, 1, 1)
+    if historical_date:
+        try:
+            h_date = date.fromisoformat(historical_date)
+        except Exception:
+            pass
+
+    c_date = date(2025, 1, 1)
+    if current_date:
+        try:
+            c_date = date.fromisoformat(current_date)
+        except Exception:
+            pass
+
+    # Save uploaded files into storage root
+    upload_id = uuid.uuid4()
+    target_dir = Path(settings.storage_root) / "uploads" / str(upload_id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    before_path = target_dir / f"before{before_ext}"
+    after_path = target_dir / f"after{after_ext}"
+
+    with open(before_path, "wb") as f_out:
+        shutil.copyfileobj(before.file, f_out)
+    with open(after_path, "wb") as f_out:
+        shutil.copyfileobj(after.file, f_out)
+
+    svc = InvestigationService(db, AssetService(Path(settings.storage_root)))
+    return await svc.create_with_observations(
+        bbox=parsed_bbox,
+        historical_date=h_date,
+        current_date=c_date,
+        before_path=str(before_path),
+        after_path=str(after_path),
     )
 
 
