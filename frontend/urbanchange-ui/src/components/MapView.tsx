@@ -83,6 +83,10 @@ export default forwardRef<MapHandle, Props>(function MapView(
     L.control.zoom({ position: 'bottomright' }).addTo(m)
     const opt = { attribution: 'Imagery © Esri', maxZoom: 19 }
     tiles.current = { a: L.tileLayer(SAT, opt).addTo(m), b: L.tileLayer(SAT, opt).addTo(m) }
+    const cA = tiles.current.a.getContainer()
+    if (cA) {
+      cA.style.filter = 'sepia(0.25) contrast(0.92) brightness(0.95)'
+    }
 
     m.createPane('labels')
     const lp = m.getPane('labels')!
@@ -170,16 +174,16 @@ export default forwardRef<MapHandle, Props>(function MapView(
             try {
               L.geoJSON(reg.geometry as any, {
                 style: {
-                  color: '#ef4444',
-                  weight: 2.5,
-                  dashArray: '5 3',
-                  fillColor: '#f59e0b',
-                  fillOpacity: 0.45,
+                  color: '#dc2626',
+                  weight: 3.5,
+                  dashArray: '6 3',
+                  fillColor: '#ea580c',
+                  fillOpacity: 0.55,
                 },
               })
                 .bindPopup(
                   `<b>Potential ${reg.change_type || data?.detection?.class || 'Change'}</b><br>` +
-                  `Area: ${reg.area_m2 ? Math.round(reg.area_m2) + ' m²' : 'Identified'} · ` +
+                  `Area: ${reg.area_m2 ? Math.round(reg.area_m2).toLocaleString() + ' m²' : 'Identified'} · ` +
                   `Confidence: ${Math.round((reg.confidence || data?.detection?.confidence || 0.9) * 100)}%`
                 )
                 .addTo(g.current!.change)
@@ -192,11 +196,11 @@ export default forwardRef<MapHandle, Props>(function MapView(
         try {
           L.geoJSON(data.detection.polygon as any, {
             style: {
-              color: '#ef4444',
-              weight: 2.5,
-              dashArray: '5 3',
-              fillColor: '#f59e0b',
-              fillOpacity: 0.45,
+              color: '#dc2626',
+              weight: 3.5,
+              dashArray: '6 3',
+              fillColor: '#ea580c',
+              fillOpacity: 0.55,
             },
           })
             .bindPopup(
@@ -209,6 +213,14 @@ export default forwardRef<MapHandle, Props>(function MapView(
           console.warn('Could not parse detection polygon', err)
         }
       }
+    }
+
+    // Ensure layers are attached to map
+    if (layers.change && !map.current.hasLayer(g.current.change)) {
+      map.current.addLayer(g.current.change)
+    }
+    if (layers.sensitive && !map.current.hasLayer(g.current.sensitive)) {
+      map.current.addLayer(g.current.sensitive)
     }
 
     // Fit map bounds
