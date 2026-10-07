@@ -35,27 +35,145 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:80}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-urbanchange}
       STORAGE_ROOT: /data/storage
-      # Adapter modes: default to mock for turnkey startup without external services
+      REQUIRE_AUTH: ${REQUIRE_AUTH:-false}
+      API_KEY: ${API_KEY:-}
+      # Adapter modes: default to mock for demo profile
       SATELLITE_ADAPTER: ${SATELLITE_ADAPTER:-mock}
       ML_ADAPTER: ${ML_ADAPTER:-mock}
       GIS_ADAPTER: ${GIS_ADAPTER:-mock}
       INTELLIGENCE_ADAPTER: ${INTELLIGENCE_ADAPTER:-mock}
-      # HTTP adapter base URLs (used when an adapter is switched to http mode)
-      SATELLITE_BASE_URL: ${SATELLITE_BASE_URL:-http://host.docker.internal:8001}
+      # HTTP adapter base URLs
+      SATELLITE_BASE_URL: ${SATELLITE_BASE_URL:-http://satellite:8001}
       ML_BASE_URL: ${ML_BASE_URL:-http://host.docker.internal:8002}
-      GIS_BASE_URL: ${GIS_BASE_URL:-http://host.docker.internal:8003}
-      INTELLIGENCE_BASE_URL: ${INTELLIGENCE_BASE_URL:-http://host.docker.internal:8004}
+      GIS_BASE_URL: ${GIS_BASE_URL:-http://gis:8003}
+      INTELLIGENCE_BASE_URL: ${INTELLIGENCE_BASE_URL:-http://intelligence:8004}
     volumes:
       - storage_data:/data/storage
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - urbanchange-net
+
+  frontend:
+    build:
+      context: ./frontend/urbanchange-ui
+      dockerfile: Dockerfile
+    container_name: urbanchange-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "5173:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - urbanchange-net
+
+  # ── Live Services (Role 2 Satellite, Role 3 GIS, Role 6 Intelligence) ────────
+  satellite:
+    build:
+      context: ./satellite
+      dockerfile: Dockerfile
+    container_name: urbanchange-satellite
+    restart: unless-stopped
+    profiles:
+      - live
+    ports:
+      - "8001:8001"
+    environment:
+      PORT: 8001
+      DATA_DIR: /data/storage
+      COPERNICUS_CLIENT_ID: ${COPERNICUS_CLIENT_ID:-}
+      COPERNICUS_CLIENT_SECRET: ${COPERNICUS_CLIENT_SECRET:-}
+    volumes:
+      - storage_data:/data/storage
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - urbanchange-net
+
+  gis:
+    build:
+      context: ./gis
+      dockerfile: Dockerfile
+    container_name: urbanchange-gis
+    restart: unless-stopped
+    profiles:
+      - live
+    ports:
+      - "8003:8003"
+    environment:
+      PORT: 8003
+      DATA_DIR: /data/storage
+    volumes:
+      - storage_data:/data/storage
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - urbanchange-net
+
+  intelligence:
+    build:
+      context: ./intelligence
+      dockerfile: Dockerfile
+    container_name: urbanchange-intelligence
+    restart: unless-stopped
+    profiles:
+      - live
+    ports:
+      - "8004:8004"
+    environment:
+      PORT: 8004
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      LLM_MODEL: ${LLM_MODEL:-llama3:8b}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8004/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - urbanchange-net
+
+  # ── Optional Ollama Profile for local LLM inference ─────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: urbanchange-ollama
+    restart: unless-stopped
+    profiles:
+      - ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
     networks:
       - urbanchange-net
 
 volumes:
   postgres_data:
   storage_data:
+  ollama_data:
 
 networks:
   urbanchange-net:

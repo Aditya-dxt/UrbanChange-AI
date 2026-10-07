@@ -44,6 +44,23 @@ Create a new investigation (status = `pending`).
 
 ---
 
+### POST `/api/investigations/upload`
+Create a new investigation directly from user-uploaded before/after imagery (GeoTIFF, PNG, JPEG). Bypasses the satellite retrieval stage and pipes observations directly into the ML and downstream engines.
+
+**Request (multipart/form-data)**
+- `before`: File (GeoTIFF `.tif`, `.tiff`, PNG `.png`, JPEG `.jpg`, `.jpeg`, max 50MB)
+- `after`: File (GeoTIFF `.tif`, `.tiff`, PNG `.png`, JPEG `.jpg`, `.jpeg`, max 50MB)
+- `bbox`: Form field string, e.g. `[77.1, 28.5, 77.3, 28.7]` or `"77.1,28.5,77.3,28.7"`
+- `historical_date`: Form field string (`YYYY-MM-DD`, optional)
+- `current_date`: Form field string (`YYYY-MM-DD`, optional)
+
+**Response `201`**
+```json
+{ "id": "<uuid>", "status": "pending" }
+```
+
+---
+
 ### POST `/api/investigations/{id}/run`
 Enqueue the full detection pipeline.
 
