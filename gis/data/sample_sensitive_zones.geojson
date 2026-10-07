@@ -1,0 +1,52 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "layer_id": "sample-env-buffer-01",
+    "layer_name": "SAMPLE Environmental Buffer Zone (Demo Only - Not Legal Title)",
+    "description": "Authoritative planning buffer sample for demonstration purposes. Does not constitute proof of ownership or illegality."
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ZONE-A",
+        "name": "Riparian Eco-Sensitive Buffer Zone",
+        "category": "wetland_buffer",
+        "source": "State Environmental Planning Authority (Sample)"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [80.310, 26.410],
+            [80.355, 26.410],
+            [80.355, 26.455],
+            [80.310, 26.455],
+            [80.310, 26.410]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ZONE-B",
+        "name": "Municipal Green Belt Reserve",
+        "category": "green_belt",
+        "source": "Urban Development Board (Sample)"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [80.330, 26.430],
+            [80.370, 26.430],
+            [80.370, 26.470],
+            [80.330, 26.470],
+            [80.330, 26.430]
+          ]
+        ]
+      }
+    }
+  ]
+}
