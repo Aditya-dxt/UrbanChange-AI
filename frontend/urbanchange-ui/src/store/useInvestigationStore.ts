@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { api } from '../api/client'
+import { api, type UploadOptions } from '../api/client'
 import type { Base, Layers } from '../components/MapView'
 import type { BBox, DetectRequest, Investigation } from '../types'
 
@@ -73,7 +73,7 @@ interface State {
   deleteHistory: (id: string) => void
   clearHistory: () => void
   executeDetection: () => Promise<Investigation | undefined>
-  executeUpload: (before: File, after: File) => Promise<Investigation | undefined>
+  executeUpload: (before: File, after: File, options?: UploadOptions) => Promise<Investigation | undefined>
   checkSystemStatus: () => Promise<void>
 }
 
@@ -195,10 +195,10 @@ export const useInvestigationStore = create<State>((set, get) => ({
     }
   },
 
-  executeUpload: async (before: File, after: File) => {
+  executeUpload: async (before: File, after: File, options?: UploadOptions) => {
     set({ phase: 'loading', step: 0, error: null })
     try {
-      const data = await api.upload(before, after, step => set({ step }))
+      const data = await api.upload(before, after, options, step => set({ step }))
 
       // Update history
       const existingHistory = get().history.filter(h => h.id !== data.id)

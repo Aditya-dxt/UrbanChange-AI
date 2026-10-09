@@ -38,8 +38,9 @@ export const mockApi: Api = {
     if (req.scenario === 'fail') throw new Error('503 satellite catalog unavailable')
     return build(req.bbox, req.scenario)
   },
-  async upload(_b, _a, onProgress) {
-    for (let i = 0; i < 5; i++) { onProgress?.(i); await wait(250) }
+  async upload(_b, _a, optionsOrProgress, onProgress) {
+    const cb = typeof optionsOrProgress === 'function' ? optionsOrProgress : onProgress
+    for (let i = 0; i < 5; i++) { cb?.(i); await wait(250) }
     return build([80.34, 26.43, 80.35, 26.44], 'ok', false)
   },
   async ask(_id, q) {

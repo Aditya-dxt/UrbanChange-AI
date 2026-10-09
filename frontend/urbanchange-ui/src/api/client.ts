@@ -15,10 +15,22 @@ import type {
 } from '../types'
 import { mockApi } from './mock'
 
+export interface UploadOptions {
+  historical_date?: string
+  current_date?: string
+  bbox?: BBox
+  pixel_size_m?: number
+}
+
 export interface Api {
   detect(req: DetectRequest, onProgress?: (step: number) => void): Promise<Investigation>
   ask(id: string, question: string): Promise<AssistantReply>
-  upload(before: File, after: File, onProgress?: (step: number) => void): Promise<Investigation>
+  upload(
+    before: File,
+    after: File,
+    optionsOrProgress?: UploadOptions | ((step: number) => void),
+    onProgress?: (step: number) => void
+  ): Promise<Investigation>
 }
 
 const BASE = import.meta.env.VITE_API_URL ?? '/api'
@@ -401,13 +413,24 @@ const httpApi: Api = {
     }
   },
 
-  async upload(before: File, after: File, onProgress?: (step: number) => void): Promise<Investigation> {
-    onProgress?.(0)
+  async upload(
+    before: File,
+    after: File,
+    optionsOrProgress?: UploadOptions | ((step: number) => void),
+    onProgress?: (step: number) => void
+  ): Promise<Investigation> {
+    const options = typeof optionsOrProgress === 'object' ? optionsOrProgress : undefined
+    const progressCb = typeof optionsOrProgress === 'function' ? optionsOrProgress : onProgress
+
+    progressCb?.(0)
     const fd = new FormData()
     fd.append('before', before)
     fd.append('after', after)
-    fd.append('historical_date', '2024-01-01')
-    fd.append('current_date', '2025-01-01')
+    fd.append('historical_date', options?.historical_date || '2024-01-01')
+    fd.append('current_date', options?.current_date || '2025-01-01')
+    if (options?.bbox) {
+      fd.append('bbox', JSON.stringify(options.bbox))
+    }
 
     const createRes = await j<{ id: string; status: string }>(
       await fetch(`${BASE}/investigations/upload`, {
@@ -421,7 +444,7 @@ const httpApi: Api = {
       await post(`${BASE}/investigations/${createRes.id}/run`, {})
     )
 
-    return pollInvestigation(createRes.id, onProgress)
+    return pollInvestigation(createRes.id, progressCb)
   },
 }
 
