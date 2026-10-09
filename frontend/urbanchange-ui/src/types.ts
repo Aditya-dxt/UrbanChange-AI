@@ -107,6 +107,7 @@ export interface Investigation {
   evidence_graph?: EvidenceGraph | null
   explanation: string
   requires_human_verification?: boolean
+  created_at?: string
 }
 
 export interface DetectRequest {
