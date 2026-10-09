@@ -40,14 +40,14 @@ services:
       STORAGE_ROOT: /data/storage
       REQUIRE_AUTH: ${REQUIRE_AUTH:-false}
       API_KEY: ${API_KEY:-}
-      # Adapter modes: default to mock for demo profile
+      # Adapter modes: ML defaults to http (real SatQuery model), others mock unless live profile
       SATELLITE_ADAPTER: ${SATELLITE_ADAPTER:-mock}
-      ML_ADAPTER: ${ML_ADAPTER:-mock}
+      ML_ADAPTER: ${ML_ADAPTER:-http}
       GIS_ADAPTER: ${GIS_ADAPTER:-mock}
       INTELLIGENCE_ADAPTER: ${INTELLIGENCE_ADAPTER:-mock}
       # HTTP adapter base URLs
       SATELLITE_BASE_URL: ${SATELLITE_BASE_URL:-http://satellite:8001}
-      ML_BASE_URL: ${ML_BASE_URL:-http://host.docker.internal:8002}
+      ML_BASE_URL: ${ML_BASE_URL:-http://ml:8002}
       GIS_BASE_URL: ${GIS_BASE_URL:-http://gis:8003}
       INTELLIGENCE_BASE_URL: ${INTELLIGENCE_BASE_URL:-http://intelligence:8004}
     volumes:
@@ -58,6 +58,30 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+    networks:
+      - urbanchange-net
+
+  ml:
+    build:
+      context: ./ml
+      dockerfile: Dockerfile
+    container_name: urbanchange-ml
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      PORT: 8002
+      STORAGE_ROOT: /data/storage
+      ML_WEIGHTS_PATH: /app/weights/best_siamese_model.pth
+      ML_DEVICE: ${ML_DEVICE:-cpu}
+    volumes:
+      - storage_data:/data/storage
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/ml/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
     networks:
       - urbanchange-net
 
