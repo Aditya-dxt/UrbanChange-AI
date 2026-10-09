@@ -115,6 +115,36 @@ export function ResultCards({
   )
 }
 
+// Colour per class
+const CLASS_COLORS: Record<string, string> = {
+  construction: '#f97316',
+  deforestation: '#22c55e',
+  vegetation_loss: '#22c55e',
+  excavation: '#a855f7',
+  infrastructure: '#3b82f6',
+  water_change: '#06b6d4',
+  other: '#facc15',
+  no_change: '#94a3b8',
+}
+
+function getColor(label?: string) {
+  if (!label) return '#f97316'
+  return CLASS_COLORS[label.toLowerCase()] ?? '#f97316'
+}
+
+// Extract axis-aligned bounding box from a GeoJSON Polygon in normalised [0,1] space
+function polygonBbox(coords: number[][][]): { x: number; y: number; w: number; h: number } | null {
+  const ring = coords[0]
+  if (!ring || ring.length < 3) return null
+  const xs = ring.map(p => p[0])
+  const ys = ring.map(p => p[1])
+  const minX = Math.min(...xs)
+  const maxX = Math.max(...xs)
+  const minY = Math.min(...ys)
+  const maxY = Math.max(...ys)
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+}
+
 export function BeforeAfter({
   inv,
   maskOn,
@@ -127,12 +157,27 @@ export function BeforeAfter({
   afterUrl: string
 }) {
   const { t1, t2 } = inv.observations
+  const regions = inv.detection?.change_regions ?? []
+
+  // Only draw boxes when mask is on and we have normalised regions (non-georeferenced)
+  const hasNormalisedRegions =
+    regions.length > 0 &&
+    (() => {
+      const r = regions[0]
+      const coords = (r.geometry as GeoJSON.Polygon)?.coordinates
+      if (!coords?.[0]?.[0]) return false
+      const [x, y] = coords[0][0]
+      // Normalised coords are in [0,1]; georeferenced coords are lon/lat (large numbers)
+      return Math.abs(x) <= 1 && Math.abs(y) <= 1
+    })()
+
   return (
     <div className="card flex flex-col gap-2">
       <div className="text-sm font-semibold text-slate-200">
         Temporal Scene Pair
       </div>
       <div className="grid gap-3 grid-cols-2">
+        {/* ── T1: Before – plain image ── */}
         <figure className="flex flex-col gap-1">
           <div className="overflow-hidden rounded-lg border border-slate-700/60 bg-slate-900 aspect-video flex items-center justify-center">
             <img
@@ -148,6 +193,8 @@ export function BeforeAfter({
             <b>T1:</b> {t1.date} · cloud {t1.cloud}% · {t1.quality}
           </figcaption>
         </figure>
+
+        {/* ── T2: After – image + mask + bounding boxes ── */}
         <figure className="relative flex flex-col gap-1">
           <div className="relative overflow-hidden rounded-lg border border-slate-700/60 bg-slate-900 aspect-video flex items-center justify-center">
             <img
@@ -158,6 +205,8 @@ export function BeforeAfter({
                 ;(e.currentTarget as HTMLElement).style.display = 'none'
               }}
             />
+
+            {/* Segmentation mask overlay */}
             {maskOn && inv.detection?.mask_url && (
               <img
                 src={inv.detection.mask_url}
@@ -168,26 +217,124 @@ export function BeforeAfter({
                 }}
               />
             )}
+
+            {/* Bounding-box overlay for detected change regions */}
+            {hasNormalisedRegions && (
+              <svg
+                className="absolute inset-0 h-full w-full"
+                viewBox="0 0 1 1"
+                preserveAspectRatio="none"
+                aria-label="Change region bounding boxes"
+              >
+                {regions.map((r, i) => {
+                  const poly = r.geometry as GeoJSON.Polygon
+                  const box = poly?.coordinates ? polygonBbox(poly.coordinates) : null
+                  if (!box) return null
+                  const label = (r as any).label ?? (r as any).change_type ?? 'change'
+                  const color = getColor(label)
+                  const fontSize = 0.030
+                  return (
+                    <g key={i}>
+                      {/* Rectangle */}
+                      <rect
+                        x={box.x}
+                        y={box.y}
+                        width={box.w}
+                        height={box.h}
+                        fill="none"
+                        stroke={color}
+                        strokeWidth="0.006"
+                        strokeDasharray="0.015 0.008"
+                        rx="0.008"
+                      />
+                      {/* Corner accent top-left */}
+                      <polyline
+                        points={`${box.x + 0.025},${box.y} ${box.x},${box.y} ${box.x},${box.y + 0.025}`}
+                        fill="none"
+                        stroke={color}
+                        strokeWidth="0.009"
+                        strokeLinecap="round"
+                      />
+                      {/* Corner accent bottom-right */}
+                      <polyline
+                        points={`${box.x + box.w - 0.025},${box.y + box.h} ${box.x + box.w},${box.y + box.h} ${box.x + box.w},${box.y + box.h - 0.025}`}
+                        fill="none"
+                        stroke={color}
+                        strokeWidth="0.009"
+                        strokeLinecap="round"
+                      />
+                      {/* Label pill background */}
+                      <rect
+                        x={box.x}
+                        y={Math.max(0, box.y - fontSize - 0.012)}
+                        width={label.length * fontSize * 0.62 + 0.020}
+                        height={fontSize + 0.010}
+                        rx="0.006"
+                        fill={color}
+                        fillOpacity="0.88"
+                      />
+                      {/* Label text */}
+                      <text
+                        x={box.x + 0.010}
+                        y={Math.max(fontSize, box.y - 0.007)}
+                        fontSize={fontSize}
+                        fill="white"
+                        fontFamily="'Inter', 'ui-sans-serif', sans-serif"
+                        fontWeight="700"
+                        textAnchor="start"
+                        style={{ letterSpacing: '0.01em' }}
+                      >
+                        {label.replace(/_/g, ' ')}
+                      </text>
+                    </g>
+                  )
+                })}
+              </svg>
+            )}
           </div>
           <figcaption className="text-[11px] text-slate-400">
             <b>T2:</b> {t2.date} · cloud {t2.cloud}% · {t2.quality}
+            {hasNormalisedRegions && (
+              <span className="ml-2 text-orange-400 font-semibold">
+                {regions.length} change region{regions.length !== 1 ? 's' : ''} detected
+              </span>
+            )}
           </figcaption>
         </figure>
       </div>
-      {inv.detection?.mask_url && (
-        <label className="mt-1 inline-flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={maskOn}
-            onChange={e => onMask(e.target.checked)}
-            className="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0"
-          />
-          Overlay AI segmentation mask
-        </label>
-      )}
+
+      {/* Controls row */}
+      <div className="flex items-center gap-4 mt-1 flex-wrap">
+        {inv.detection?.mask_url && (
+          <label className="inline-flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={maskOn}
+              onChange={e => onMask(e.target.checked)}
+              className="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0"
+            />
+            Overlay AI segmentation mask
+          </label>
+        )}
+        {hasNormalisedRegions && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {Array.from(new Set(regions.map(r => (r as any).label ?? 'change'))).map(cls => (
+              <span
+                key={cls}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
+                style={{ backgroundColor: getColor(cls) + 'cc' }}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-white opacity-80" />
+                {cls.replace(/_/g, ' ')}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
+
 
 export function GisPanel({ gis }: { gis: Gis }) {
   return (
