@@ -20,6 +20,7 @@ from pathlib import Path
 import json
 import shutil
 from typing import Optional
+import uuid
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Request, UploadFile, status

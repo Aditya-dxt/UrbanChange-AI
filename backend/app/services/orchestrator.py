@@ -382,6 +382,33 @@ class PipelineOrchestrator:
         try:
             await self._set_stage(inv, STAGE_GIS)
 
+            # If input is non-georeferenced (e.g. manual PNG/JPEG upload), gracefully skip zoning analysis
+            if det_internal.mask_bounds is None:
+                log.info("orchestrator: skipping GIS stage for non-georeferenced input id=%s", inv.id)
+                area_m2 = float(det_internal.changed_area_pixels) * 0.25
+                gis_internal = GISResultInternal(
+                    changed_area_m2=area_m2,
+                    sensitive_intersections=[],
+                    overlap_percentages={},
+                    nearby_features=[],
+                    geojson=None,
+                    layer_versions={"zoning_status": "N/A - non-georeferenced input"},
+                    distances={},
+                )
+                gis_record = GISResult(
+                    id=uuid.uuid4(),
+                    investigation_id=inv.id,
+                    changed_area_m2=area_m2,
+                    overlap_percentages={},
+                    distances={},
+                    geojson=None,
+                    layer_versions={"zoning_status": "N/A - non-georeferenced input"},
+                    raw_payload={"status": "N/A - non-georeferenced input", "changed_area_m2": area_m2},
+                )
+                self._db.add(gis_record)
+                await self._db.commit()
+                return gis_internal, gis_record
+
             context_layers = list(self._cfg.context_layer_ids)
             raw = await self._gis.analyze_change(
                 change_regions=det_internal.change_regions,

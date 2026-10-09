@@ -101,6 +101,48 @@ class TestMLContract:
         assert det.model_version
         assert det.changed_area_pixels > 0
 
+    @pytest.mark.anyio
+    async def test_http_ml_adapter_maps_real_service_contract(self):
+        from unittest.mock import AsyncMock, patch
+        from app.adapters.http.ml import HttpMLAdapter
+        from app.adapters.mappers.ml_mapper import map_ml_detect_change
+
+        sample_response = {
+            "change_detected": True,
+            "confidence": 0.9305,
+            "changed_area_pixels": 13702,
+            "mask_path": "/data/storage/masks/mask_test.png",
+            "preview_path": "/data/storage/previews/preview_test.png",
+            "bounds": [80.32, 26.42, 80.36, 26.46],
+            "change_regions": [
+                {
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[[80.32, 26.42], [80.36, 26.42], [80.36, 26.46], [80.32, 26.46], [80.32, 26.42]]]
+                    },
+                    "area_pixels": 13702,
+                    "confidence": 0.9305,
+                    "label": "construction"
+                }
+            ],
+            "classification": {"label": "construction", "confidence": 0.9305},
+            "model_version": "SatQuery-Siamese-UNet-v1.0",
+            "threshold": 0.5
+        }
+
+        with patch("app.adapters.http.ml.post_with_retry", new=AsyncMock(return_value=sample_response)):
+            adapter = HttpMLAdapter(base_url="http://ml:8002", timeout=30)
+            raw = await adapter.detect_change(
+                "/data/before.tif", "2025-04-14", "EPSG:4326", 10.0,
+                "/data/after.tif", "2026-01-18", "EPSG:4326", 10.0,
+                "Sentinel-2", "test-inv-id"
+            )
+            det, _ = map_ml_detect_change(raw)
+            assert det.change_detected is True
+            assert det.model_version == "SatQuery-Siamese-UNet-v1.0"
+            assert det.confidence == 0.9305
+            assert len(det.change_regions) == 1
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # GIS contract

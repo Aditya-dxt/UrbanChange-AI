@@ -29,7 +29,10 @@ class MockGISAdapter(GISAdapter):
             len(change_regions), context_layer_ids, investigation_id,
         )
 
-        west, south, east, north = bbox
+        if bbox and len(bbox) == 4:
+            west, south, east, north = bbox
+        else:
+            west, south, east, north = [80.30, 26.40, 80.40, 26.50]
 
         return {
             "changed_area_m2": 3842.0,
