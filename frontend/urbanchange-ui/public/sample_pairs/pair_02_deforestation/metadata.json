@@ -1,0 +1,10 @@
+{
+  "title": "Forest Land Clearing",
+  "type": "vegetation_loss",
+  "sensor": "Aerial / High-Res Optical",
+  "resolution_m": 0.5,
+  "historical_date": "2023-01-20",
+  "current_date": "2023-11-14",
+  "expected_change": true,
+  "description": "Clearing of dense forest canopy for land alteration."
+}

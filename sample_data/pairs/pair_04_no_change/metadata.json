@@ -1,0 +1,10 @@
+{
+  "title": "Stable Landscape (Seasonal Variation Only)",
+  "type": "no_change",
+  "sensor": "Aerial / High-Res Optical",
+  "resolution_m": 0.5,
+  "historical_date": "2023-04-15",
+  "current_date": "2023-10-15",
+  "expected_change": false,
+  "description": "Subtle seasonal illumination shift with zero structural land-use change."
+}

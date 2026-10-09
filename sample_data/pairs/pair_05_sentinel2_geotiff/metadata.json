@@ -1,0 +1,17 @@
+{
+  "title": "Sentinel-2 L2A Multispectral Stack (Kanpur, India)",
+  "type": "construction",
+  "sensor": "Sentinel-2 (B02, B03, B04, B08)",
+  "resolution_m": 10.0,
+  "crs": "EPSG:4326",
+  "bbox": [
+    80.32,
+    26.42,
+    80.36,
+    26.46
+  ],
+  "historical_date": "2023-02-18",
+  "current_date": "2024-01-25",
+  "expected_change": true,
+  "description": "Georeferenced 4-band multispectral tile stack showing rapid peri-urban construction."
+}
