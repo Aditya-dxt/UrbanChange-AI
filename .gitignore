@@ -48,3 +48,10 @@ data/storage/*
 !data/storage/.gitkeep
 data/cache/*
 !data/cache/.gitkeep
+
+# ML Model Weights
+*.pth
+*.pt
+*.ckpt
+ml/weights/*
+!ml/weights/.gitkeep
