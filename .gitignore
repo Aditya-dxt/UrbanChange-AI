@@ -48,6 +48,7 @@ data/storage/*
 !data/storage/.gitkeep
 data/cache/*
 !data/cache/.gitkeep
+/storage/
 
 # ML Model Weights
 *.pth
