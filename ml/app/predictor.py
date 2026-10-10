@@ -330,8 +330,8 @@ class ChangePredictor:
             compactness = float((4.0 * math.pi * pixel_count) / (perimeter_pixels ** 2))
 
             # Classification rules:
-            # 1. Spectral NDVI difference if NIR available
-            region_class = "construction"
+            # 1. Spectral NDVI difference if NIR is available (Multispectral Sentinel-2)
+            region_class = "other"
             if nir1 is not None and nir2 is not None and rgb1_raw is not None and rgb2_raw is not None:
                 r1 = rgb1_raw[:, :, 0]
                 r2 = rgb2_raw[:, :, 0]
@@ -340,16 +340,64 @@ class ChangePredictor:
                 mean_ndvi1 = float(np.mean(ndvi1[comp_mask]))
                 mean_ndvi2 = float(np.mean(ndvi2[comp_mask]))
                 d_ndvi = mean_ndvi2 - mean_ndvi1
-                if mean_ndvi1 > 0.25 and d_ndvi < -0.15:
-                    region_class = "vegetation_loss" if d_ndvi > -0.35 else "deforestation"
-            else:
-                # 2. Shape-based classification
-                if aspect_ratio > 3.2 and (pixel_count * pixel_area_m2) > 800:
+                if mean_ndvi1 > 0.20 and d_ndvi < -0.12:
+                    region_class = "vegetation_loss" if d_ndvi > -0.30 else "deforestation"
+                elif d_ndvi > 0.15:
+                    region_class = "afforestation"
+                elif aspect_ratio > 3.2 and (pixel_count * pixel_area_m2) > 800:
+                    region_class = "infrastructure"
+                elif compactness > 0.35 and comp_confidence > 0.60:
+                    region_class = "construction"
+                elif compactness < 0.25 and pixel_count * pixel_area_m2 > 1200:
+                    region_class = "excavation"
+                else:
+                    region_class = "construction" if comp_confidence > 0.70 else "other"
+            elif rgb1_raw is not None and rgb2_raw is not None:
+                # 2. Spectral optical Green Leaf Index (GLI) & Excess Green (ExG) for standard RGB imagery
+                r1, g1, b1 = rgb1_raw[:, :, 0], rgb1_raw[:, :, 1], rgb1_raw[:, :, 2]
+                r2, g2, b2 = rgb2_raw[:, :, 0], rgb2_raw[:, :, 1], rgb2_raw[:, :, 2]
+
+                # GLI = (2*G - R - B) / (2*G + R + B)
+                denom1 = 2.0 * g1 + r1 + b1 + 1e-6
+                denom2 = 2.0 * g2 + r2 + b2 + 1e-6
+                gli1 = (2.0 * g1 - r1 - b1) / denom1
+                gli2 = (2.0 * g2 - r2 - b2) / denom2
+
+                mean_gli1 = float(np.mean(gli1[comp_mask]))
+                mean_gli2 = float(np.mean(gli2[comp_mask]))
+                d_gli = mean_gli2 - mean_gli1
+
+                # ExG = 2*G - R - B
+                exg1 = 2.0 * g1 - r1 - b1
+                exg2 = 2.0 * g2 - r2 - b2
+                mean_exg1 = float(np.mean(exg1[comp_mask]))
+                mean_exg2 = float(np.mean(exg2[comp_mask]))
+                d_exg = mean_exg2 - mean_exg1
+
+                # Check if T1 had significant green vegetation that was lost in T2
+                is_vegetation_loss = (
+                    (mean_gli1 > 0.05 or mean_exg1 > 0.04) and
+                    (d_gli < -0.05 or d_exg < -0.06 or (mean_gli2 < 0.01 and mean_gli1 > 0.08))
+                )
+
+                if is_vegetation_loss:
+                    region_class = "vegetation_loss" if d_gli > -0.22 else "deforestation"
+                elif aspect_ratio > 3.2 and (pixel_count * pixel_area_m2) > 800:
                     region_class = "infrastructure"  # elongated road, railway, pipeline
                 elif compactness > 0.35 and comp_confidence > 0.65:
                     region_class = "construction"   # compact building/site
                 elif compactness < 0.2 and pixel_count * pixel_area_m2 > 1500:
                     region_class = "excavation"     # irregular earthworks/quarry
+                else:
+                    region_class = "construction" if comp_confidence > 0.75 else "other"
+            else:
+                # 3. Shape-based classification fallback
+                if aspect_ratio > 3.2 and (pixel_count * pixel_area_m2) > 800:
+                    region_class = "infrastructure"
+                elif compactness > 0.35 and comp_confidence > 0.65:
+                    region_class = "construction"
+                elif compactness < 0.2 and pixel_count * pixel_area_m2 > 1500:
+                    region_class = "excavation"
                 else:
                     region_class = "other"
 
@@ -509,8 +557,44 @@ class ChangePredictor:
 
         min_pixels = max(4, int(min_area_m2 / (resolved_pixel_size ** 2)))
 
-        # Run model inference
-        prob_map = self.predict_change_prob(img1_norm, img2_norm)
+        # Align image shapes
+        h1, w1 = img1_norm.shape[:2]
+        h2, w2 = img2_norm.shape[:2]
+        h = min(h1, h2)
+        w = min(w1, w2)
+        img1_norm = img1_norm[:h, :w]
+        img2_norm = img2_norm[:h, :w]
+
+        # Reconstruct unnormalized raw RGB for previews and spectral analysis
+        rgb1_raw = np.clip(img1_norm * IMAGENET_STD + IMAGENET_MEAN, 0.0, 1.0)
+        rgb2_raw = np.clip(img2_norm * IMAGENET_STD + IMAGENET_MEAN, 0.0, 1.0)
+
+        # 1. Siamese Attention Neural Network change probability
+        siamese_prob = self.predict_change_prob(img1_norm, img2_norm)
+
+        # 2. Spectral Vegetation Loss Probability
+        veg_loss_prob = np.zeros_like(siamese_prob)
+        if nir1 is not None and nir2 is not None:
+            # Multispectral Sentinel-2 NDVI difference
+            n1 = nir1[:h, :w]
+            n2 = nir2[:h, :w]
+            r1 = rgb1_raw[:, :, 0]
+            r2 = rgb2_raw[:, :, 0]
+            ndvi1 = (n1 - r1) / (n1 + r1 + 1e-6)
+            ndvi2 = (n2 - r2) / (n2 + r2 + 1e-6)
+            d_ndvi = ndvi1 - ndvi2  # positive when vegetation lost
+            veg_loss_prob = (1.0 / (1.0 + np.exp(-12.0 * (d_ndvi - 0.15)))) * (ndvi1 > 0.18).astype(np.float32)
+        elif rgb1_raw is not None and rgb2_raw is not None:
+            # Optical RGB Green Leaf Index (GLI) difference for drone/aerial imagery
+            r1, g1, b1 = rgb1_raw[:, :, 0], rgb1_raw[:, :, 1], rgb1_raw[:, :, 2]
+            r2, g2, b2 = rgb2_raw[:, :, 0], rgb2_raw[:, :, 1], rgb2_raw[:, :, 2]
+            gli1 = (2.0 * g1 - r1 - b1) / (2.0 * g1 + r1 + b1 + 1e-6)
+            gli2 = (2.0 * g2 - r2 - b2) / (2.0 * g2 + r2 + b2 + 1e-6)
+            d_gli = gli1 - gli2  # positive when green canopy lost
+            veg_loss_prob = (1.0 / (1.0 + np.exp(-12.0 * (d_gli - 0.09)))) * (gli1 > 0.05).astype(np.float32)
+
+        # Fuse neural network with spectral vegetation loss
+        prob_map = np.maximum(siamese_prob, veg_loss_prob)
 
         # Post-process binary mask
         clean_binary, clean_labeled, num_features = self.postprocess_mask(
@@ -527,10 +611,6 @@ class ChangePredictor:
             # If no change detected, confidence of 'no change'
             overall_conf = float(1.0 - np.mean(prob_map))
         overall_conf = float(np.clip(overall_conf, 0.0, 1.0))
-
-        # Reconstruct unnormalized raw RGB for previews
-        rgb2_raw = np.clip(img2_norm * IMAGENET_STD + IMAGENET_MEAN, 0.0, 1.0)
-        rgb1_raw = np.clip(img1_norm * IMAGENET_STD + IMAGENET_MEAN, 0.0, 1.0)
 
         # Extract vector regions & classification
         regions, classification = self.extract_change_regions(
