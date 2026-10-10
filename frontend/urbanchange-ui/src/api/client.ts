@@ -99,6 +99,12 @@ function mapBackendInvestigation(raw: any): Investigation {
     const dw = e - w
     const dh = n - s
 
+    // Check if coordinates are normalized in [0, 1] (non-georeferenced images like PNG/JPEG)
+    const isNormalized = (coords: number[][]) => {
+      if (!coords || coords.length === 0) return false
+      return coords.every(([x, y]) => x >= -0.05 && x <= 1.05 && y >= -0.05 && y <= 1.05)
+    }
+
     // Check if coordinates fall inside the investigation's bounding box
     const isInsideBbox = (coords: number[][]) => {
       if (!coords || coords.length === 0) return false
@@ -108,7 +114,38 @@ function mapBackendInvestigation(raw: any): Investigation {
     const adaptedRegions = rawRegions.map((reg: any, idx: number) => {
       let geom = reg.geometry
       const coords = geom?.coordinates?.[0]
-      if (!coords || !isInsideBbox(coords)) {
+      const normalized = isNormalized(coords)
+      let box: { x: number; y: number; w: number; h: number } | undefined
+
+      if (coords && normalized) {
+        // Direct pixel / normalized box calculation
+        const xs = coords.map((p: number[]) => p[0])
+        const ys = coords.map((p: number[]) => p[1])
+        const minX = Math.max(0, Math.min(...xs))
+        const maxX = Math.min(1, Math.max(...xs))
+        const minY = Math.max(0, Math.min(...ys))
+        const maxY = Math.min(1, Math.max(...ys))
+        box = {
+          x: minX,
+          y: minY,
+          w: Math.max(0.02, maxX - minX),
+          h: Math.max(0.02, maxY - minY),
+        }
+      } else if (coords && isInsideBbox(coords) && dw > 0 && dh > 0) {
+        // Geographic coordinate to normalized [0,1] viewport box
+        const lons = coords.map((p: number[]) => p[0])
+        const lats = coords.map((p: number[]) => p[1])
+        const minLon = Math.min(...lons)
+        const maxLon = Math.max(...lons)
+        const minLat = Math.min(...lats)
+        const maxLat = Math.max(...lats)
+        box = {
+          x: Math.max(0, Math.min(1, (minLon - w) / dw)),
+          y: Math.max(0, Math.min(1, (n - maxLat) / dh)),
+          w: Math.max(0.02, Math.min(1, (maxLon - minLon) / dw)),
+          h: Math.max(0.02, Math.min(1, (maxLat - minLat) / dh)),
+        }
+      } else if (!coords || (!normalized && !isInsideBbox(coords))) {
         // Place mock detection region inside the user's selected AOI
         geom = {
           type: 'Polygon',
@@ -120,13 +157,22 @@ function mapBackendInvestigation(raw: any): Investigation {
             [w + dw * (0.2 + idx * 0.1), s + dh * (0.2 + idx * 0.1)],
           ]],
         }
+        box = {
+          x: 0.2 + (idx % 3) * 0.25,
+          y: 0.2 + Math.floor(idx / 3) * 0.25,
+          w: 0.2,
+          h: 0.2,
+        }
       }
+
       return {
         ...reg,
         geometry: geom,
+        box,
+        label: reg.label || reg.change_type || d.classification?.label || 'construction',
+        change_type: reg.label || reg.change_type || d.classification?.label || 'Construction',
         area_m2: reg.area_m2 || (reg.area_pixels ? reg.area_pixels * 100 : Math.round(Math.abs(dw * dh * 1e10 * 0.15))),
         confidence: reg.confidence || d.confidence || 0.94,
-        change_type: reg.label || reg.change_type || d.classification?.label || 'Construction',
       }
     })
 
@@ -135,6 +181,7 @@ function mapBackendInvestigation(raw: any): Investigation {
       change_type: 'Construction',
       confidence: d.confidence ?? 0.94,
       area_m2: 15200,
+      box: { x: 0.25, y: 0.25, w: 0.45, h: 0.5 },
       geometry: {
         type: 'Polygon',
         coordinates: [[

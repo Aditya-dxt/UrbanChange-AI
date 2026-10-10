@@ -1,3 +1,4 @@
+import React, { useState, useMemo } from 'react'
 import type {
   Evidence,
   EvidenceGraph,
@@ -115,34 +116,185 @@ export function ResultCards({
   )
 }
 
-// Colour per class
+// Colour per class matching the visual design
 const CLASS_COLORS: Record<string, string> = {
-  construction: '#f97316',
-  deforestation: '#22c55e',
-  vegetation_loss: '#22c55e',
-  excavation: '#a855f7',
-  infrastructure: '#3b82f6',
-  water_change: '#06b6d4',
-  other: '#facc15',
-  no_change: '#94a3b8',
+  construction: '#f97316',    // Bright Orange
+  deforestation: '#22c55e',   // Emerald Green
+  vegetation_loss: '#22c55e', // Emerald Green
+  excavation: '#ef4444',      // Vibrant Red
+  infrastructure: '#06b6d4',  // Cyan Blue
+  water_change: '#3b82f6',    // Royal Blue
+  other: '#facc15',           // Amber
+  no_change: '#94a3b8',       // Slate
 }
 
-function getColor(label?: string) {
-  if (!label) return '#f97316'
-  return CLASS_COLORS[label.toLowerCase()] ?? '#f97316'
+function getColor(label?: string, idx: number = 0) {
+  if (!label) {
+    return idx % 2 === 0 ? '#ef4444' : '#06b6d4'
+  }
+  const key = label.toLowerCase()
+  return CLASS_COLORS[key] ?? (idx % 2 === 0 ? '#ef4444' : '#06b6d4')
 }
 
 // Extract axis-aligned bounding box from a GeoJSON Polygon in normalised [0,1] space
-function polygonBbox(coords: number[][][]): { x: number; y: number; w: number; h: number } | null {
+function extractPolygonBbox(coords: number[][][]): { x: number; y: number; w: number; h: number } | null {
   const ring = coords[0]
   if (!ring || ring.length < 3) return null
   const xs = ring.map(p => p[0])
   const ys = ring.map(p => p[1])
-  const minX = Math.min(...xs)
-  const maxX = Math.max(...xs)
-  const minY = Math.min(...ys)
-  const maxY = Math.max(...ys)
-  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+  const minX = Math.max(0, Math.min(...xs))
+  const maxX = Math.min(1, Math.max(...xs))
+  const minY = Math.max(0, Math.min(...ys))
+  const maxY = Math.min(1, Math.max(...ys))
+  return {
+    x: minX,
+    y: minY,
+    w: Math.max(0.02, maxX - minX),
+    h: Math.max(0.02, maxY - minY),
+  }
+}
+
+interface RegionBoxItem {
+  box: { x: number; y: number; w: number; h: number }
+  label: string
+  color: string
+  confidence?: number
+}
+
+/**
+ * Reusable full-scene viewer panel:
+ * Displays the complete image without zooming or cropping (natural aspect ratio),
+ * with prominent SVG bounding-box overlays outlining detected change regions.
+ */
+function FullScenePanel({
+  src,
+  alt,
+  badgeText,
+  badgeColorClass,
+  boxes,
+  showBoxes,
+  overlayElement,
+}: {
+  src: string
+  alt: string
+  badgeText: string
+  badgeColorClass: string
+  boxes: RegionBoxItem[]
+  showBoxes: boolean
+  overlayElement?: React.ReactNode
+}) {
+  return (
+    <figure className="relative flex flex-col gap-1.5">
+      {/* Outer viewport container – prevents cropping, displays full unzoomed image */}
+      <div className="relative overflow-hidden rounded-xl border border-slate-700/80 bg-slate-950 flex items-center justify-center shadow-lg">
+        {/* Full Image: 100% width, natural height, zero crop or artificial zoom */}
+        <img
+          src={src}
+          alt={alt}
+          className="w-full h-auto max-h-[540px] object-contain block select-none"
+          onError={e => {
+            ;(e.currentTarget as HTMLElement).style.display = 'none'
+          }}
+        />
+
+        {/* Optional segmentation mask overlay (e.g. for T2) */}
+        {overlayElement}
+
+        {/* Prominent Bounding Boxes SVG Overlay (aligned 1:1 with the image bounds) */}
+        {showBoxes && boxes.length > 0 && (
+          <svg
+            className="absolute inset-0 h-full w-full pointer-events-none"
+            viewBox="0 0 1 1"
+            preserveAspectRatio="none"
+            aria-label="Detected change region bounding boxes"
+          >
+            {boxes.map((item, i) => {
+              const { box, color, label } = item
+              // Bold, high-visibility stroke matching reference image 2
+              const strokeWidth = '0.012'
+              const cornerRadius = '0.010'
+              return (
+                <g key={i}>
+                  {/* Outer glow / drop-shadow stroke */}
+                  <rect
+                    x={box.x}
+                    y={box.y}
+                    width={box.w}
+                    height={box.h}
+                    fill="none"
+                    stroke="#000000"
+                    strokeWidth="0.018"
+                    rx={cornerRadius}
+                    opacity="0.6"
+                  />
+                  {/* Translucent colored highlight fill */}
+                  <rect
+                    x={box.x}
+                    y={box.y}
+                    width={box.w}
+                    height={box.h}
+                    fill={color}
+                    fillOpacity="0.22"
+                    stroke={color}
+                    strokeWidth={strokeWidth}
+                    rx={cornerRadius}
+                  />
+                  {/* Corner brackets accents */}
+                  <polyline
+                    points={`${box.x + Math.min(0.04, box.w * 0.35)},${box.y} ${box.x},${box.y} ${box.x},${box.y + Math.min(0.04, box.h * 0.35)}`}
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth="0.016"
+                    strokeLinecap="round"
+                  />
+                  <polyline
+                    points={`${box.x + box.w - Math.min(0.04, box.w * 0.35)},${box.y + box.h} ${box.x + box.w},${box.y + box.h} ${box.x + box.w},${box.y + box.h - Math.min(0.04, box.h * 0.35)}`}
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth="0.016"
+                    strokeLinecap="round"
+                  />
+                  {/* Label badge tag */}
+                  {box.h >= 0.05 && (
+                    <g>
+                      <rect
+                        x={box.x}
+                        y={Math.max(0.005, box.y - 0.038)}
+                        width={Math.min(box.w, label.length * 0.018 + 0.03)}
+                        height="0.034"
+                        rx="0.006"
+                        fill="#0f172a"
+                        fillOpacity="0.9"
+                        stroke={color}
+                        strokeWidth="0.005"
+                      />
+                      <text
+                        x={box.x + 0.008}
+                        y={Math.max(0.027, box.y - 0.015)}
+                        fontSize="0.024"
+                        fill="#ffffff"
+                        fontWeight="bold"
+                        fontFamily="sans-serif"
+                      >
+                        {label.length > 12 ? label.slice(0, 10) + '…' : label}
+                      </text>
+                    </g>
+                  )}
+                </g>
+              )
+            })}
+          </svg>
+        )}
+
+        {/* Top-Left Scene Identifier Badge (e.g. T1 Baseline, T2 Current) */}
+        <div className="absolute top-2.5 left-2.5 z-10">
+          <span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider shadow-md backdrop-blur-sm ${badgeColorClass}`}>
+            {badgeText}
+          </span>
+        </div>
+      </div>
+    </figure>
+  )
 }
 
 export function BeforeAfter({
@@ -157,177 +309,168 @@ export function BeforeAfter({
   afterUrl: string
 }) {
   const { t1, t2 } = inv.observations
-  const regions = inv.detection?.change_regions ?? []
+  const [showBoxes, setShowBoxes] = useState(true)
+  const [boxesOnBoth, setBoxesOnBoth] = useState(true)
 
-  // Only draw boxes when mask is on and we have normalised regions (non-georeferenced)
-  const hasNormalisedRegions =
-    regions.length > 0 &&
-    (() => {
-      const r = regions[0]
-      const coords = (r.geometry as GeoJSON.Polygon)?.coordinates
-      if (!coords?.[0]?.[0]) return false
-      const [x, y] = coords[0][0]
-      // Normalised coords are in [0,1]; georeferenced coords are lon/lat (large numbers)
-      return Math.abs(x) <= 1 && Math.abs(y) <= 1
-    })()
+  // Extract all region boxes
+  const regions = inv.detection?.change_regions ?? []
+  const boxItems = useMemo<RegionBoxItem[]>(() => {
+    const list: RegionBoxItem[] = []
+    for (let idx = 0; idx < regions.length; idx++) {
+      const r = regions[idx] as any
+      let b = r.box
+      if (!b) {
+        const poly = r.geometry as GeoJSON.Polygon
+        if (poly?.coordinates) {
+          b = extractPolygonBbox(poly.coordinates)
+        }
+      }
+      if (b) {
+        const label = r.label || r.change_type || 'Change'
+        list.push({
+          box: b,
+          label: String(label).replace(/_/g, ' '),
+          color: getColor(label, idx),
+          confidence: r.confidence,
+        })
+      }
+    }
+    return list
+  }, [regions])
+
+  const distinctLabels = Array.from(new Set(boxItems.map(b => b.label)))
 
   return (
-    <div className="card flex flex-col gap-2">
-      <div className="text-sm font-semibold text-slate-200">
-        Temporal Scene Pair
-      </div>
-      <div className="grid gap-3 grid-cols-2">
-        {/* ── T1: Before – plain image ── */}
-        <figure className="flex flex-col gap-1">
-          <div className="overflow-hidden rounded-lg border border-slate-700/60 bg-slate-900 aspect-video flex items-center justify-center">
-            <img
-              src={t1.image_url}
-              alt="Historical Scene T1"
-              className="h-full w-full object-cover"
-              onError={e => {
-                ;(e.currentTarget as HTMLElement).style.display = 'none'
-              }}
-            />
-          </div>
-          <figcaption className="text-[11px] text-slate-400">
-            <b>T1:</b> {t1.date} · cloud {t1.cloud}% · {t1.quality}
-          </figcaption>
-        </figure>
-
-        {/* ── T2: After – image + mask + bounding boxes ── */}
-        <figure className="relative flex flex-col gap-1">
-          <div className="relative overflow-hidden rounded-lg border border-slate-700/60 bg-slate-900 aspect-video flex items-center justify-center">
-            <img
-              src={afterUrl}
-              alt="Current Scene T2"
-              className="h-full w-full object-cover"
-              onError={e => {
-                ;(e.currentTarget as HTMLElement).style.display = 'none'
-              }}
-            />
-
-            {/* Segmentation mask overlay */}
-            {maskOn && inv.detection?.mask_url && (
-              <img
-                src={inv.detection.mask_url}
-                alt="Change Detection Mask"
-                className="absolute inset-0 h-full w-full object-cover opacity-80 mix-blend-screen"
-                onError={e => {
-                  ;(e.currentTarget as HTMLElement).style.display = 'none'
-                }}
-              />
-            )}
-
-            {/* Bounding-box overlay for detected change regions */}
-            {hasNormalisedRegions && (
-              <svg
-                className="absolute inset-0 h-full w-full"
-                viewBox="0 0 1 1"
-                preserveAspectRatio="none"
-                aria-label="Change region bounding boxes"
-              >
-                {regions.map((r, i) => {
-                  const poly = r.geometry as GeoJSON.Polygon
-                  const box = poly?.coordinates ? polygonBbox(poly.coordinates) : null
-                  if (!box) return null
-                  const label = (r as any).label ?? (r as any).change_type ?? 'change'
-                  const color = getColor(label)
-                  const fontSize = 0.030
-                  return (
-                    <g key={i}>
-                      {/* Rectangle */}
-                      <rect
-                        x={box.x}
-                        y={box.y}
-                        width={box.w}
-                        height={box.h}
-                        fill="none"
-                        stroke={color}
-                        strokeWidth="0.006"
-                        strokeDasharray="0.015 0.008"
-                        rx="0.008"
-                      />
-                      {/* Corner accent top-left */}
-                      <polyline
-                        points={`${box.x + 0.025},${box.y} ${box.x},${box.y} ${box.x},${box.y + 0.025}`}
-                        fill="none"
-                        stroke={color}
-                        strokeWidth="0.009"
-                        strokeLinecap="round"
-                      />
-                      {/* Corner accent bottom-right */}
-                      <polyline
-                        points={`${box.x + box.w - 0.025},${box.y + box.h} ${box.x + box.w},${box.y + box.h} ${box.x + box.w},${box.y + box.h - 0.025}`}
-                        fill="none"
-                        stroke={color}
-                        strokeWidth="0.009"
-                        strokeLinecap="round"
-                      />
-                      {/* Label pill background */}
-                      <rect
-                        x={box.x}
-                        y={Math.max(0, box.y - fontSize - 0.012)}
-                        width={label.length * fontSize * 0.62 + 0.020}
-                        height={fontSize + 0.010}
-                        rx="0.006"
-                        fill={color}
-                        fillOpacity="0.88"
-                      />
-                      {/* Label text */}
-                      <text
-                        x={box.x + 0.010}
-                        y={Math.max(fontSize, box.y - 0.007)}
-                        fontSize={fontSize}
-                        fill="white"
-                        fontFamily="'Inter', 'ui-sans-serif', sans-serif"
-                        fontWeight="700"
-                        textAnchor="start"
-                        style={{ letterSpacing: '0.01em' }}
-                      >
-                        {label.replace(/_/g, ' ')}
-                      </text>
-                    </g>
-                  )
-                })}
-              </svg>
-            )}
-          </div>
-          <figcaption className="text-[11px] text-slate-400">
-            <b>T2:</b> {t2.date} · cloud {t2.cloud}% · {t2.quality}
-            {hasNormalisedRegions && (
-              <span className="ml-2 text-orange-400 font-semibold">
-                {regions.length} change region{regions.length !== 1 ? 's' : ''} detected
+    <div className="card flex flex-col gap-3 p-4 sm:p-5">
+      {/* Title & Section Header matching Reference Image 2 */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono font-bold uppercase tracking-wider text-sky-400">
+              Full Scene Analysis
+            </span>
+            {boxItems.length > 0 && (
+              <span className="text-xs font-semibold text-emerald-400">
+                ({boxItems.length} changes outlined)
               </span>
             )}
-          </figcaption>
-        </figure>
+          </div>
+          <div className="text-xs text-slate-400 mt-0.5">
+            Bi-temporal comparison showing full uncropped visual extent with automated spatial bounding boxes.
+          </div>
+        </div>
+
+        {/* Legend pills for detected change types */}
+        {distinctLabels.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {distinctLabels.map(lbl => {
+              const color = getColor(lbl)
+              return (
+                <span
+                  key={lbl}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-white shadow-sm"
+                  style={{ backgroundColor: color + 'cc' }}
+                >
+                  <span className="w-2 h-2 rounded-full bg-white shadow-sm" />
+                  {lbl}
+                </span>
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Controls row */}
-      <div className="flex items-center gap-4 mt-1 flex-wrap">
-        {inv.detection?.mask_url && (
-          <label className="inline-flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+      {/* Side-by-Side Full Scenes Grid (No Zooming, No Cropping) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* ── T1 Baseline Scene ── */}
+        <div className="flex flex-col gap-1">
+          <FullScenePanel
+            src={t1.image_url}
+            alt="Historical Baseline Scene T1"
+            badgeText="T1 Baseline"
+            badgeColorClass="bg-slate-900/90 text-slate-100 border border-slate-700"
+            boxes={boxItems}
+            showBoxes={showBoxes && boxesOnBoth}
+          />
+          <div className="text-[11px] text-slate-400 flex items-center justify-between px-1">
+            <span><b>Date:</b> {t1.date}</span>
+            <span>Cloud: {t1.cloud}% · Quality: {t1.quality}</span>
+          </div>
+        </div>
+
+        {/* ── T2 Current Scene (with Bounding Boxes & AI Segmentation Mask) ── */}
+        <div className="flex flex-col gap-1">
+          <FullScenePanel
+            src={afterUrl}
+            alt="Current Scene T2"
+            badgeText="T2 Current"
+            badgeColorClass="bg-amber-500/90 text-slate-950 font-extrabold border border-amber-300"
+            boxes={boxItems}
+            showBoxes={showBoxes}
+            overlayElement={
+              maskOn && inv.detection?.mask_url ? (
+                <img
+                  src={inv.detection.mask_url}
+                  alt="Change Detection Mask"
+                  className="absolute inset-0 h-full w-full object-contain opacity-75 mix-blend-screen pointer-events-none"
+                  onError={e => {
+                    ;(e.currentTarget as HTMLElement).style.display = 'none'
+                  }}
+                />
+              ) : null
+            }
+          />
+          <div className="text-[11px] text-slate-400 flex items-center justify-between px-1">
+            <span><b>Date:</b> {t2.date}</span>
+            <span>Cloud: {t2.cloud}% · Quality: {t2.quality}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Interactive Controls Row */}
+      <div className="flex items-center justify-between flex-wrap gap-4 pt-2 border-t border-slate-800/80 text-xs text-slate-300">
+        <div className="flex items-center gap-5 flex-wrap">
+          {/* Toggle Change Bounding Boxes */}
+          <label className="inline-flex items-center gap-2 cursor-pointer font-medium hover:text-white">
             <input
               type="checkbox"
-              checked={maskOn}
-              onChange={e => onMask(e.target.checked)}
+              checked={showBoxes}
+              onChange={e => setShowBoxes(e.target.checked)}
               className="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0"
             />
-            Overlay AI segmentation mask
+            <span>Highlight Change Bounding Boxes</span>
           </label>
-        )}
-        {hasNormalisedRegions && (
-          <div className="flex items-center gap-2 flex-wrap">
-            {Array.from(new Set(regions.map(r => (r as any).label ?? 'change'))).map(cls => (
-              <span
-                key={cls}
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
-                style={{ backgroundColor: getColor(cls) + 'cc' }}
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-white opacity-80" />
-                {cls.replace(/_/g, ' ')}
-              </span>
-            ))}
+
+          {/* Toggle Bounding Boxes on Both Scenes */}
+          {showBoxes && (
+            <label className="inline-flex items-center gap-2 cursor-pointer font-medium hover:text-white">
+              <input
+                type="checkbox"
+                checked={boxesOnBoth}
+                onChange={e => setBoxesOnBoth(e.target.checked)}
+                className="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0"
+              />
+              <span>Outline on Both Scenes (T1 & T2)</span>
+            </label>
+          )}
+
+          {/* Toggle AI Segmentation Mask */}
+          {inv.detection?.mask_url && (
+            <label className="inline-flex items-center gap-2 cursor-pointer font-medium hover:text-white">
+              <input
+                type="checkbox"
+                checked={maskOn}
+                onChange={e => onMask(e.target.checked)}
+                className="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0"
+              />
+              <span>Overlay AI Segmentation Mask</span>
+            </label>
+          )}
+        </div>
+
+        {boxItems.length > 0 && (
+          <div className="text-[11px] text-slate-400 font-mono">
+            {boxItems.length} regions identified
           </div>
         )}
       </div>

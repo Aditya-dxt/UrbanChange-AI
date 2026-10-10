@@ -29,6 +29,8 @@ export interface Detection {
     area_m2?: number
     change_type?: string
     confidence?: number
+    label?: string
+    box?: { x: number; y: number; w: number; h: number }
   }>
 }
 
