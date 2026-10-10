@@ -19,6 +19,7 @@ COPY alembic.ini .
 COPY alembic/ ./alembic/
 COPY app/ ./app/
 COPY scripts/ ./scripts/
+COPY tests/ ./tests/
 COPY entrypoint.sh .
 
 # Ensure entrypoint is executable and has LF line endings

@@ -254,10 +254,12 @@ class PipelineOrchestrator:
 
         except (MapperError, AdapterError) as exc:
             log.error("orchestrator: satellite stage error=%s", exc)
+            inv.satellite_failure_reason = str(exc)
             await self._set_status(inv, "partial", failed_stage=STAGE_RETRIEVING)
             return None
         except Exception as exc:  # noqa: BLE001
             log.error("orchestrator: satellite stage unexpected error=%s", exc, exc_info=True)
+            inv.satellite_failure_reason = str(exc)
             await self._set_status(inv, "partial", failed_stage=STAGE_RETRIEVING)
             return None
 

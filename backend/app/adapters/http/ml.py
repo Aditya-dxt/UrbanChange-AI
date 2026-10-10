@@ -23,6 +23,20 @@ class HttpMLAdapter(MLAdapter):
         self._timeout = float(timeout)
         log.info("HttpMLAdapter base_url=%s timeout=%s", base_url, timeout)
 
+    @staticmethod
+    def _resolve_image_path(p: str) -> str:
+        if not p:
+            return p
+        if p.startswith("/"):
+            return p
+        # If relative path in shared storage, qualify with /data/storage/
+        if p.startswith("satellite/") or p.startswith("uploads/"):
+            return f"/data/storage/{p}"
+        from pathlib import Path
+        if Path(f"/data/storage/{p}").exists():
+            return f"/data/storage/{p}"
+        return p
+
     async def detect_change(
         self,
         before_path: str,
@@ -38,13 +52,13 @@ class HttpMLAdapter(MLAdapter):
     ) -> dict:
         payload = {
             "before": {
-                "image_path": before_path,
+                "image_path": self._resolve_image_path(before_path),
                 "acquisition_date": before_date,
                 "crs": before_crs,
                 "resolution": before_resolution,
             },
             "after": {
-                "image_path": after_path,
+                "image_path": self._resolve_image_path(after_path),
                 "acquisition_date": after_date,
                 "crs": after_crs,
                 "resolution": after_resolution,

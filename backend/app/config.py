@@ -48,7 +48,8 @@ class Settings(BaseSettings):
 
     # ── HTTP adapter URLs and timeouts ────────────────────────────────────────
     satellite_base_url: str = "http://localhost:8001"
-    satellite_timeout_seconds: int = 30
+    satellite_timeout_seconds: int = 120
+    satellite_max_cloud_cover: float = 20.0
 
     ml_base_url: str = "http://localhost:8002"
     ml_timeout_seconds: int = 60

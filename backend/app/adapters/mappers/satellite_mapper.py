@@ -118,9 +118,9 @@ def map_satellite_fetch(raw: dict) -> tuple[SatelliteStageResult, dict]:
     if extra:
         log.debug("satellite_mapper.fetch: ignoring unknown top-level fields %s", extra)
 
-    # Explicit no-image result (valid, not an error)
-    if not raw.get("success", True):
-        reason = raw.get("reason") or "no_suitable_image: reason not provided by module"
+    # Explicit no-image or error result (valid, not an error)
+    if not raw.get("success", True) or ("detail" in raw and "before" not in raw):
+        reason = raw.get("reason") or raw.get("detail") or "no_suitable_image: reason not provided by module"
         log.info("satellite_mapper.fetch: module returned success=false reason=%s", reason)
         return SatelliteStageResult(success=False, failure_reason=reason), raw
 

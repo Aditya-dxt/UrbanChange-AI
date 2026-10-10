@@ -1,168 +1,111 @@
 """
 Windowed Sentinel-2 COG service.
-Performs efficient AOI-windowed reads of Sentinel-2 bands, reprojection,
-grid alignment, radiometric normalization, and PNG preview rendering.
-Replaces monolithic ~1GB zip downloads with fast, windowed tile retrieval.
+Performs efficient AOI-windowed reads from Sentinel-2 COGs on AWS S3,
+computes SCL-based AOI cloud cover, aligns grids to same CRS & dimensions,
+and outputs GeoTIFF rasters and web PNG previews.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
-import struct
-import zlib
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
+from PIL import Image
 
 log = logging.getLogger(__name__)
 
 
-def _write_minimal_png(filepath: Path, width: int = 256, height: int = 256, r: int = 60, g: int = 120, b: int = 80) -> None:
-    """Generate a clean standalone RGB PNG preview without external dependencies."""
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    raw_rows = bytearray()
-    for y in range(height):
-        raw_rows.append(0)  # filter type None
-        for x in range(width):
-            # Subtle terrain gradient
-            dx = (x * 30) // width
-            dy = (y * 20) // height
-            raw_rows.extend([
-                min(255, max(0, r + dx)),
-                min(255, max(0, g + dy)),
-                min(255, max(0, b + dx // 2)),
-            ])
-    
-    compressed = zlib.compress(bytes(raw_rows), level=6)
-    
-    def chunk(tag: bytes, data: bytes) -> bytes:
-        length = struct.pack(">I", len(data))
-        crc = struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff)
-        return length + tag + data + crc
-
-    ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
-    png_bytes = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", compressed) + chunk(b"IEND", b"")
-    with open(filepath, "wb") as f:
-        f.write(png_bytes)
-
-
-def _write_minimal_geotiff(
-    filepath: Path,
-    width: int = 64,
-    height: int = 64,
-    bands: int = 4,
-    bbox: list[float] = None,
-) -> None:
-    """
-    Generate a valid multi-spectral GeoTIFF raster covering the AOI.
-    Uses rasterio if available, otherwise generates a standard Big/Little-Endian TIFF header.
-    """
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    if bbox is None:
-        bbox = [80.30, 26.40, 80.40, 26.50]
-
-    try:
-        import rasterio
-        from rasterio.transform import from_bounds
-        import numpy as np
-
-        west, south, east, north = bbox
-        transform = from_bounds(west, south, east, north, width, height)
-        # Create 4 bands (B02 Blue, B03 Green, B04 Red, B08 NIR)
-        data = np.zeros((bands, height, width), dtype=np.uint16)
-        # Populate realistic reflectance values (0-10000 range for Sentinel-2 surface reflectance)
-        data[0] = np.random.randint(400, 900, size=(height, width), dtype=np.uint16)    # Blue
-        data[1] = np.random.randint(600, 1400, size=(height, width), dtype=np.uint16)   # Green
-        data[2] = np.random.randint(500, 1800, size=(height, width), dtype=np.uint16)   # Red
-        data[3] = np.random.randint(1800, 4200, size=(height, width), dtype=np.uint16)  # NIR
-
-        profile = {
-            "driver": "GTiff",
-            "height": height,
-            "width": width,
-            "count": bands,
-            "dtype": rasterio.uint16,
-            "crs": "EPSG:4326",
-            "transform": transform,
-            "nodata": 0,
-        }
-        with rasterio.open(filepath, "w", **profile) as dst:
-            dst.write(data)
-            dst.set_band_description(1, "B02 Blue")
-            dst.set_band_description(2, "B03 Green")
-            dst.set_band_description(3, "B04 Red")
-            dst.set_band_description(4, "B08 NIR")
-        return
-    except ImportError:
-        pass
-
-    # Pure Python fallback fallback TIFF writer with valid TIFF 6.0 header
-    # 64x64 uint16 raster with 4 bands
-    num_pixels = width * height * bands
-    pixel_data = bytearray(num_pixels * 2)
-    # Fill arbitrary plausible values
-    for i in range(0, len(pixel_data), 2):
-        struct.pack_into("<H", pixel_data, i, 1200)
-
-    # Simple stripped uncompressed TIFF
-    header = struct.pack("<2sHI", b"II", 42, 8)
-    num_tags = 11
-    offset_pixels = 8 + 2 + num_tags * 12 + 4
-    ifd = bytearray()
-    ifd.extend(struct.pack("<H", num_tags))
-
-    # Helper to add directory entry
-    def add_entry(tag, dtype, count, value_or_offset):
-        ifd.extend(struct.pack("<HHI", tag, dtype, count))
-        ifd.extend(struct.pack("<I", value_or_offset))
-
-    add_entry(256, 4, 1, width)        # ImageWidth
-    add_entry(257, 4, 1, height)       # ImageLength
-    add_entry(258, 3, 1, 16)           # BitsPerSample (16 bit)
-    add_entry(259, 3, 1, 1)            # Compression = None
-    add_entry(262, 3, 1, 1)            # Photometric = BlackIsZero
-    add_entry(273, 4, 1, offset_pixels)# StripOffsets
-    add_entry(277, 3, 1, bands)        # SamplesPerPixel
-    add_entry(278, 4, 1, height)       # RowsPerStrip
-    add_entry(279, 4, 1, len(pixel_data)) # StripByteCounts
-    add_entry(284, 3, 1, 1)            # PlanarConfig = Chunky
-    add_entry(339, 3, 1, 1)            # SampleFormat = unsigned int
-    ifd.extend(struct.pack("<I", 0))    # Next IFD = 0
-
-    with open(filepath, "wb") as f:
-        f.write(header)
-        f.write(ifd)
-        f.write(pixel_data)
+def compute_cache_key(scene_ids: List[str], bbox: List[float]) -> str:
+    """Generate deterministic hash from scene IDs and AOI coordinates."""
+    key_str = "_".join(scene_ids) + "_" + "_".join(f"{coord:.5f}" for coord in bbox)
+    return hashlib.sha256(key_str.encode("utf-8")).hexdigest()[:16]
 
 
 class WindowedSentinelService:
-    """
-    Downloads AOI-windowed Sentinel-2 COG data, reprojects, normalizes,
-    and caches imagery for fast downstream ML consumption.
-    """
+    def __init__(self, storage_root: str = "/data/storage"):
+        self.storage_root = Path(storage_root).resolve()
+        self.satellite_dir = self.storage_root / "satellite"
+        self.satellite_dir.mkdir(parents=True, exist_ok=True)
 
-    def __init__(self, cache_dir: str = "data/storage/sentinel2"):
-        self.cache_dir = Path(cache_dir)
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
+    @staticmethod
+    def get_asset_url(item: dict, asset_key: str) -> Optional[str]:
+        """Extract HTTP/HTTPS asset URL from a STAC item."""
+        assets = item.get("assets", {})
+        if asset_key in assets:
+            href = assets[asset_key].get("href")
+            if href:
+                return href
+        return None
 
-    def fetch_scene_pair(
+    def compute_aoi_cloud_fraction(self, item: dict, bbox: List[float]) -> float:
+        """
+        Compute cloud fraction INSIDE the AOI using the SCL asset.
+        SCL classes for clouds/shadows:
+          3: Cloud shadow
+          8: Cloud medium probability
+          9: Cloud high probability
+          10: Thin cirrus
+        """
+        scl_url = self.get_asset_url(item, "scl")
+        if not scl_url:
+            # Fallback to scene-level metadata
+            return float(item.get("properties", {}).get("eo:cloud_cover", 0.0))
+
+        try:
+            import rasterio
+            from rasterio.windows import from_bounds
+            from rasterio.warp import transform_bounds
+
+            with rasterio.open(scl_url) as src:
+                w, s, e, n = transform_bounds("EPSG:4326", src.crs, *bbox)
+                win = from_bounds(w, s, e, n, src.transform)
+                scl_data = src.read(1, window=win)
+                if scl_data.size == 0:
+                    return float(item.get("properties", {}).get("eo:cloud_cover", 0.0))
+                cloud_mask = np.isin(scl_data, [3, 8, 9, 10])
+                return float(cloud_mask.mean() * 100.0)
+        except Exception as e:
+            log.warning("Could not read SCL cloud mask for %s: %s", item.get("id"), e)
+            return float(item.get("properties", {}).get("eo:cloud_cover", 0.0))
+
+    def fetch_and_align_pair(
         self,
-        scene_id: str,
-        bbox: list[float],
-        historical_date: str = "2024-01-15",
-        current_date: str = "2025-01-15",
-    ) -> tuple[Path, Path, Path, Path]:
+        before_item: dict,
+        after_item: dict,
+        bbox: List[float],
+    ) -> Tuple[Path, Path, Path, Path, str, List[float]]:
         """
-        Fetch or generate before/after pair for the given scene and bbox.
-        Returns: (before_tif, before_preview, after_tif, after_preview)
-        """
-        out_dir = self.cache_dir / scene_id
-        out_dir.mkdir(parents=True, exist_ok=True)
+        Fetch visual RGB rasters for before & after, project older onto newer grid,
+        save 3-band GeoTIFFs and PNG previews in storage_root/satellite/<hash>/.
 
-        before_tif = out_dir / "before.tif"
-        before_png = out_dir / "before.png"
-        after_tif = out_dir / "after.tif"
-        after_png = out_dir / "after.png"
+        Returns:
+            (before_tif, before_png, after_tif, after_png, crs_str, aligned_bounds)
+        """
+        import rasterio
+        from rasterio.windows import from_bounds
+        from rasterio.warp import transform_bounds, reproject, Resampling
+
+        before_id = before_item.get("id", "before")
+        after_id = after_item.get("id", "after")
+        cache_id = compute_cache_key([before_id, after_id], bbox)
+
+        pair_dir = self.satellite_dir / cache_id
+        pair_dir.mkdir(parents=True, exist_ok=True)
+
+        before_tif = pair_dir / "before.tif"
+        before_png = pair_dir / "before_preview.png"
+        after_tif = pair_dir / "after.tif"
+        after_png = pair_dir / "after_preview.png"
+
+        before_url = self.get_asset_url(before_item, "visual")
+        after_url = self.get_asset_url(after_item, "visual")
+
+        if not before_url or not after_url:
+            raise ValueError(f"Missing visual RGB asset in STAC items: before={before_url}, after={after_url}")
 
         # Check existing cache
         if (
@@ -170,17 +113,72 @@ class WindowedSentinelService:
             and before_png.exists()
             and after_tif.exists()
             and after_png.exists()
-            and before_tif.stat().st_size > 500
+            and before_tif.stat().st_size > 1000
         ):
-            log.info("windowed_service: using cached scene pair %s", scene_id)
-            return before_tif, before_png, after_tif, after_png
+            log.info("windowed_service: cache hit for %s", cache_id)
+            with rasterio.open(after_tif) as ref:
+                crs_str = ref.crs.to_string() if ref.crs else "EPSG:32644"
+            return before_tif, before_png, after_tif, after_png, crs_str, bbox
 
-        # Generate windowed / aligned rasters
-        _write_minimal_geotiff(before_tif, width=128, height=128, bands=4, bbox=bbox)
-        _write_minimal_png(before_png, width=256, height=256, r=40, g=110, b=60)
+        log.info("windowed_service: fetching and windowing COG for before=%s, after=%s", before_id, after_id)
 
-        _write_minimal_geotiff(after_tif, width=128, height=128, bands=4, bbox=bbox)
-        _write_minimal_png(after_png, width=256, height=256, r=80, g=95, b=90)
+        # 1. Read After scene as master grid
+        with rasterio.open(after_url) as src_after:
+            w_after, s_after, e_after, n_after = transform_bounds("EPSG:4326", src_after.crs, *bbox)
+            win_after = from_bounds(w_after, s_after, e_after, n_after, src_after.transform)
+            transform_after = src_after.window_transform(win_after)
+            after_data = src_after.read([1, 2, 3], window=win_after)
+            crs_after = src_after.crs
+            crs_str = crs_after.to_string() if crs_after else "EPSG:32644"
 
-        log.info("windowed_service: generated aligned scene pair for %s", scene_id)
-        return before_tif, before_png, after_tif, after_png
+        channels, height, width = after_data.shape
+        if height == 0 or width == 0:
+            raise ValueError(f"AOI resulted in empty raster window for bbox {bbox}")
+
+        # 2. Read Before scene and reproject onto after grid
+        with rasterio.open(before_url) as src_before:
+            before_data = np.zeros((channels, height, width), dtype=np.uint8)
+            for b_idx in range(channels):
+                reproject(
+                    source=rasterio.band(src_before, b_idx + 1),
+                    destination=before_data[b_idx],
+                    src_transform=src_before.transform,
+                    src_crs=src_before.crs,
+                    dst_transform=transform_after,
+                    dst_crs=crs_after,
+                    resampling=Resampling.bilinear,
+                )
+
+        # 3. Write GeoTIFF files
+        out_profile = {
+            "driver": "GTiff",
+            "height": height,
+            "width": width,
+            "count": 3,
+            "dtype": rasterio.uint8,
+            "crs": crs_after,
+            "transform": transform_after,
+            "compress": "deflate",
+        }
+
+        with rasterio.open(after_tif, "w", **out_profile) as dst:
+            dst.write(after_data)
+
+        with rasterio.open(before_tif, "w", **out_profile) as dst:
+            dst.write(before_data)
+
+        # 4. Write web-friendly PNG previews
+        self._write_png_preview(before_data, before_png)
+        self._write_png_preview(after_data, after_png)
+
+        log.info("windowed_service: saved aligned pair to %s", pair_dir)
+        return before_tif, before_png, after_tif, after_png, crs_str, bbox
+
+    @staticmethod
+    def _write_png_preview(rgb_arr: np.ndarray, out_png: Path) -> None:
+        """Save (3, H, W) uint8 raster as an RGB PNG."""
+        # Transpose from (3, H, W) to (H, W, 3)
+        img_arr = np.transpose(rgb_arr, (1, 2, 0))
+        img = Image.fromarray(img_arr, mode="RGB")
+        out_png.parent.mkdir(parents=True, exist_ok=True)
+        img.save(out_png, format="PNG")

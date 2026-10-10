@@ -1,6 +1,6 @@
 from datetime import date
 from typing import Any, List, Optional, Union
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class BoundingBox(BaseModel):
@@ -12,7 +12,7 @@ class BoundingBox(BaseModel):
 
 class SceneCandidate(BaseModel):
     scene_id: str
-    acquisition_date: date
+    acquisition_date: str
     cloud_cover: Optional[float] = None
     sensor: str = "Sentinel-2"
     crs: Optional[str] = "EPSG:32644"
@@ -72,16 +72,22 @@ class SatelliteSearchResponse(BaseModel):
 
 
 class SatelliteFetchRequest(BaseModel):
-    scene_id: str
+    scene_id: Optional[str] = None
     bbox: List[float]
+    historical_date: Optional[Union[date, str]] = None
+    current_date: Optional[Union[date, str]] = None
+    before_scene_id: Optional[str] = None
+    after_scene_id: Optional[str] = None
 
 
 class FetchedScene(BaseModel):
     scene_id: str
-    acquisition_date: date
+    acquisition_date: str
     sensor: str = "Sentinel-2"
+    image_path: Optional[str] = None
     file_path: Optional[str] = None
     preview_path: Optional[str] = None
+    cloud_cover: Optional[float] = None
     cloud_score: Optional[float] = None
     crs: Optional[str] = "EPSG:32644"
     resolution: Optional[float] = 10.0

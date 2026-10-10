@@ -166,6 +166,8 @@ Returns `503` if the database is unreachable.
 
 ### POST `/satellite/search`
 
+Data source: Earth Search STAC API (`https://earth-search.aws.element84.com/v1`, collection `sentinel-2-l2a`, no API key).
+
 **Request (sent by backend):**
 ```json
 {
@@ -176,6 +178,12 @@ Returns `503` if the database is unreachable.
   "max_observations": 2
 }
 ```
+
+**Selection & Ranking Rules:**
+1. Candidate scenes are ranked primarily by **AOI-level cloud fraction** computed via the SCL (Scene Classification Layer) asset (classes 3: cloud shadow, 8: medium cloud, 9: high cloud, 10: cirrus).
+2. Date proximity to the target date.
+3. Seasonal similarity (day-of-year distance) between requested dates.
+4. Validation: Reject AOI smaller than `MIN_AOI_KM2` (default 0.25 km²) or invalid bbox ordering with `HTTP 422 Unprocessable Entity`.
 
 **Response (must return):**
 ```json
@@ -198,7 +206,7 @@ Returns `503` if the database is unreachable.
 
 **No-image case** — return `success: false`, not an HTTP error:
 ```json
-{ "success": false, "reason": "no_suitable_image: all scenes exceed cloud cover threshold", "scenes": [] }
+{ "success": false, "reason": "no_suitable_image: no Sentinel-2 scene under 20.0% cloud within +/-30 days of 2025-01-05", "scenes": [] }
 ```
 
 ### POST `/satellite/fetch`
@@ -208,12 +216,18 @@ Returns `503` if the database is unreachable.
 { "scene_id": "S2A_MSIL2A_…", "bbox": [77.1, 28.5, 77.3, 28.7] }
 ```
 
+**Fetch & Alignment Process:**
+- Performs windowed reads directly from S3 COG `visual` assets (TCI RGB 10m).
+- Reprojects the older scene onto the newer scene grid (`rasterio.warp.reproject`) to guarantee identical pixel shape, CRS, and resolution.
+- Caches by hash of scene IDs + bbox to make repeat requests instant.
+- Saves 3-band GeoTIFF and browser-compatible RGB PNG preview under `/data/storage/satellite/<cache_hash>/`.
+
 **Response (must return):**
 ```json
 {
   "success": true,
   "before": { "scene_id": "…", "acquisition_date": "2025-04-14", "sensor": "Sentinel-2",
-              "image_path": "sentinel2/2025/before.tif", "preview_path": "sentinel2/2025/before_preview.png",
+              "image_path": "satellite/<hash>/before.tif", "preview_path": "satellite/<hash>/before_preview.png",
               "cloud_cover": 8.3, "crs": "EPSG:32643", "resolution": 10.0, "bounds": […] },
   "after":  { … },
   "intermediate": []

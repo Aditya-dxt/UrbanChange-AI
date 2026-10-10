@@ -47,6 +47,7 @@ services:
       INTELLIGENCE_ADAPTER: ${INTELLIGENCE_ADAPTER:-mock}
       # HTTP adapter base URLs
       SATELLITE_BASE_URL: ${SATELLITE_BASE_URL:-http://satellite:8001}
+      SATELLITE_TIMEOUT_SECONDS: ${SATELLITE_TIMEOUT_SECONDS:-120}
       ML_BASE_URL: ${ML_BASE_URL:-http://ml:8002}
       GIS_BASE_URL: ${GIS_BASE_URL:-http://gis:8003}
       INTELLIGENCE_BASE_URL: ${INTELLIGENCE_BASE_URL:-http://intelligence:8004}
@@ -113,19 +114,19 @@ services:
       dockerfile: Dockerfile
     container_name: urbanchange-satellite
     restart: unless-stopped
-    profiles:
-      - live
     ports:
       - "8001:8001"
     environment:
       PORT: 8001
+      STORAGE_ROOT: /data/storage
       DATA_DIR: /data/storage
-      COPERNICUS_CLIENT_ID: ${COPERNICUS_CLIENT_ID:-}
-      COPERNICUS_CLIENT_SECRET: ${COPERNICUS_CLIENT_SECRET:-}
+      MIN_AOI_KM2: ${MIN_AOI_KM2:-0.25}
+      MAX_CLOUD: ${MAX_CLOUD:-20.0}
+      DATE_WINDOW_DAYS: ${DATE_WINDOW_DAYS:-30}
     volumes:
       - storage_data:/data/storage
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 10s
       timeout: 5s
       retries: 3
