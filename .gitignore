@@ -50,9 +50,13 @@ data/cache/*
 !data/cache/.gitkeep
 /storage/
 
-# ML Model Weights
+# ML Model Weights & Artifacts
 *.pth
 *.pt
 *.ckpt
+*.onnx
 ml/weights/*
 !ml/weights/.gitkeep
+ml/data/
+ml/runs/
+ml/outputs/

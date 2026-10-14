@@ -94,6 +94,9 @@ async def health_check():
         model_loaded=True,
         device=str(predictor.device),
         model_version="SatQuery-Siamese-UNet-v1.0",
+        engine=predictor.engine,
+        profiles_available=["hires", "sentinel2"],
+        vehicles_supported=True,
     )
 
 
@@ -125,6 +128,12 @@ async def model_info():
             "infrastructure",
             "other",
         ],
+        engine=predictor.engine,
+        profiles={
+            "hires": {"resolution_m": "<=1.0", "sensor": "Drone/Aerial/Upload", "vehicles": True},
+            "sentinel2": {"resolution_m": "10.0", "sensor": "Sentinel-2 MSI", "vehicles": False},
+        },
+        vehicles_enabled=True,
     )
 
 
